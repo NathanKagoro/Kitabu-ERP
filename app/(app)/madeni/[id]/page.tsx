@@ -1,0 +1,155 @@
+'use client';
+
+import { useLiveQuery } from 'dexie-react-hooks';
+import { HandCoins, MessageCircle } from '@/components/icons';
+import { useParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { useState } from 'react';
+
+import { useApp } from '@/components/app-provider';
+import { useLastPaidLabel } from '@/components/customers/last-paid';
+import { Money, OptionGrid, PageHeader } from '@/components/ui/bits';
+import { Button } from '@/components/ui/button';
+import { Field, TextInput } from '@/components/ui/field';
+import { Keypad, parseKeypad } from '@/components/ui/keypad';
+import { Sheet } from '@/components/ui/sheet';
+import { useToast } from '@/components/ui/toast';
+import { customerBalance, isCreditCharge, isDebtRepayment, lastPaymentByCustomer } from '@/lib/calc/credit';
+import { cn } from '@/lib/cn';
+import { recordDebtPayment } from '@/lib/local/actions';
+import { db } from '@/lib/local/db';
+import { formatTZS } from '@/lib/money';
+import { fillTemplate, whatsappLink } from '@/lib/receipt';
+import type { PaymentMethod } from '@/lib/types';
+
+export default function CustomerPage() {
+  const { id } = useParams<{ id: string }>();
+  const t = useTranslations('customers');
+  const tp = useTranslations('payment');
+  const tc = useTranslations('common');
+  const toast = useToast();
+  const { businessId, userId, business } = useApp();
+  const lastPaid = useLastPaidLabel();
+
+  const [paying, setPaying] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [reference, setReference] = useState('');
+
+  const data = useLiveQuery(async () => {
+    const customer = await db().customers.get(id);
+    if (!customer) return null;
+    const payments = await db().payments.where('customerId').equals(id).toArray();
+    const entries = payments
+      .filter((p) => isCreditCharge(p) || isDebtRepayment(p))
+      .sort((a, b) => a.clientCreatedAt.localeCompare(b.clientCreatedAt));
+    let running = 0;
+    const history = entries.map((p) => {
+      running += isCreditCharge(p) ? p.amount : -p.amount;
+      return { payment: p, charge: isCreditCharge(p), running };
+    });
+    return {
+      customer,
+      balance: customerBalance(payments),
+      lastPaidAt: lastPaymentByCustomer(payments).get(id) ?? null,
+      history: history.reverse(),
+    };
+  }, [id]);
+
+  if (!data) return <PageHeader title="" />;
+  const { customer, balance, history } = data;
+
+  const template = business?.settings.reminderTemplate?.trim();
+  const values = { name: customer.name, business: business?.name ?? '', balance: formatTZS(balance) };
+  const reminder = template ? fillTemplate(template, values) : t('reminderTemplate', values);
+
+  const value = Math.round(parseKeypad(amount));
+  const save = async () => {
+    if (!businessId || value <= 0) return;
+    await recordDebtPayment({ businessId, userId, customerId: id, amount: value, method, reference: reference.trim() || null });
+    toast(t('paymentRecorded'));
+    setPaying(false);
+    setAmount('');
+    setReference('');
+  };
+
+  const date = (iso: string) =>
+    new Date(iso).toLocaleDateString('sw-TZ', { day: 'numeric', month: 'short', timeZone: 'Africa/Dar_es_Salaam' });
+
+  return (
+    <>
+      <PageHeader title={customer.name} subtitle={customer.phone ?? t('noPhone')} />
+
+      <section className="card m-3 p-4">
+        <p className="text-sm font-medium text-ink-soft">{balance > 0 ? t('owes') : t('owesNothing')}</p>
+        <Money value={Math.max(balance, 0)} symbol className={cn('text-3xl font-bold', balance > 0 ? 'text-debt' : 'text-ink')} />
+        {balance > 0 ? <p className="text-sm text-ink-faint">{lastPaid(data.lastPaidAt)}</p> : null}
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <Button size="lg" onClick={() => setPaying(true)} disabled={balance <= 0}>
+            <HandCoins size={20} />
+            {t('recordPayment')}
+          </Button>
+          {customer.phone ? (
+            <a
+              href={whatsappLink(reminder, customer.phone)}
+              target="_blank"
+              rel="noreferrer"
+              aria-disabled={balance <= 0}
+              className={cn(
+                'flex h-14 items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface text-lg font-semibold',
+                balance <= 0 && 'pointer-events-none opacity-45'
+              )}
+            >
+              <MessageCircle size={20} className="text-brand" />
+              {t('remind')}
+            </a>
+          ) : (
+            <p className="flex items-center text-xs text-ink-faint">{t('addPhoneToRemind')}</p>
+          )}
+        </div>
+      </section>
+
+      <h2 className="px-4 pt-2 pb-1.5 text-sm font-bold text-ink-soft">{t('history')}</h2>
+      <ul className="card mx-3 divide-y divide-line">
+        {history.map(({ payment, charge, running }) => (
+          <li key={payment.id} className="flex items-center gap-3 px-4 py-3">
+            <span className="w-14 shrink-0 text-sm text-ink-faint">{date(payment.clientCreatedAt)}</span>
+            <span className="min-w-0 flex-1 text-[15px]">
+              {charge ? t('creditSale') : `${t('payment')} · ${tp(`methods.${payment.method}`)}`}
+            </span>
+            <span className="text-right">
+              <Money value={charge ? payment.amount : -payment.amount} signed className={cn('block font-semibold', charge ? 'text-debt' : 'text-brand')} />
+              <Money value={running} className="block text-xs text-ink-faint" />
+            </span>
+          </li>
+        ))}
+        {history.length === 0 ? <li className="px-4 py-6 text-center text-sm text-ink-faint">{tc('nothingYet')}</li> : null}
+      </ul>
+
+      <Sheet open={paying} onClose={() => setPaying(false)} title={t('paymentAmount')}>
+        <div className="space-y-4 p-4">
+          <p className="tnum text-center text-4xl font-bold">{formatTZS(value)}</p>
+          <Button variant="secondary" block onClick={() => setAmount(String(balance))}>
+            {t('payAll')} · {formatTZS(balance)}
+          </Button>
+          <Keypad value={amount} onChange={setAmount} />
+          <OptionGrid<PaymentMethod>
+            value={method}
+            onChange={setMethod}
+            columns={3}
+            options={(['cash', 'mpesa', 'mixx', 'airtel', 'halopesa', 'bank'] as const).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
+          />
+          {method !== 'cash' && (
+            <Field label={tp('reference')} hint={tp('referenceHint')}>
+              {(fieldId) => <TextInput id={fieldId} value={reference} onChange={(e) => setReference(e.target.value)} />}
+            </Field>
+          )}
+          <Button size="xl" block disabled={value <= 0} onClick={() => void save()}>
+            {tc('save')}
+          </Button>
+        </div>
+      </Sheet>
+    </>
+  );
+}

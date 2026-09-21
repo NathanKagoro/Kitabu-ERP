@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+
+/*
+ * Design constraints, in priority order:
+ *   1. Readable in direct sunlight at a roadside stall. That rules out low
+ *      contrast, thin weights, and shadows -- a shadow is invisible outdoors,
+ *      so separation is done with real 1px lines.
+ *   2. No webfont. A font file is 40-100KB of somebody's data bundle for zero
+ *      functional gain; the system stack is already installed and renders
+ *      Swahili perfectly.
+ *   3. Thumb-sized targets. 48px is the floor, 56px for anything on the sales
+ *      screen, which gets used at speed with one hand.
+ */
+
+@theme {
+  --color-paper: #faf8f4;
+  --color-surface: #ffffff;
+  --color-line: #e2ddd3;
+  --color-line-strong: #c9c2b4;
+
+  --color-ink: #17150f;
+  --color-ink-soft: #57524a;
+  --color-ink-faint: #8a8377;
+
+  /* Deep green reads as "money in" and holds up against a bright sky. */
+  --color-brand: #0f6b3f;
+  --color-brand-dark: #0a4f2e;
+  --color-brand-tint: #e6f2eb;
+
+  /* Debt is amber, not red: being owed money is not an error. */
+  --color-debt: #a8600a;
+  --color-debt-tint: #fbf0dd;
+
+  --color-loss: #a32020;
+  --color-loss-tint: #fbe9e9;
+
+  --color-info: #1c5c8a;
+  --color-info-tint: #e7f0f7;
+
+  --radius-card: 12px;
+  --radius-control: 10px;
+
+  /* 360px is the target device width, so it deserves its own breakpoint. */
+  --breakpoint-xs: 22.5rem;
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background: var(--color-paper);
+    /* Stops iOS zooming when a numeric keypad opens. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.45;
+    overscroll-behavior-y: none;
+  }
+
+  /* Never below 16px on inputs: smaller triggers an iOS zoom on focus. */
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  button {
+    touch-action: manipulation;
+  }
+
+  :focus-visible {
+    outline: 3px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* Money should never shuffle horizontally as digits change. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+
+  /* Honour a phone set to reduce motion; also saves battery. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+
+  /* Safe area for phones with a gesture bar, plus room for the bottom nav. */
+  .pb-nav {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .sheet-enter {
+    animation: sheet-up 180ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+
+  @keyframes sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .fade-in {
+    animation: fade 150ms ease-out;
+  }
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}

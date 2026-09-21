@@ -1,0 +1,327 @@
+/**
+ * The shared shape of every record, used identically by the local Dexie store,
+ * the sync layer and the UI. Deliberately plain: IndexedDB stores structured
+ * clones, so timestamps are ISO strings and money is a plain integer number.
+ */
+
+export type BusinessMode = 'genge' | 'duka' | 'biashara';
+export type BusinessType =
+  | 'genge'
+  | 'duka'
+  | 'pharmacy'
+  | 'hardware'
+  | 'wholesale'
+  | 'services'
+  | 'other';
+export type MemberRole = 'owner' | 'manager' | 'cashier';
+
+export type ProductUnit =
+  | 'fungu'
+  | 'kg'
+  | 'kipande'
+  | 'bunda'
+  | 'debe'
+  | 'pakti'
+  | 'lita'
+  | 'dazeni'
+  | 'custom';
+
+export type VatType = 'standard' | 'exempt' | 'zero';
+export type MovementType = 'sale' | 'purchase' | 'waste' | 'adjust' | 'void';
+export type WasteReason = 'imeoza' | 'imeibiwa' | 'imeharibika' | 'nyingine';
+export type SaleStatus = 'complete' | 'void';
+export type PaymentMethod = 'cash' | 'mpesa' | 'mixx' | 'airtel' | 'halopesa' | 'bank' | 'credit';
+export type PaymentDirection = 'in' | 'out';
+export type ExpenseCategory =
+  | 'nauli'
+  | 'ushuru'
+  | 'kodi'
+  | 'umeme'
+  | 'chakula'
+  | 'mishahara'
+  | 'nyingine';
+export type DocumentKind = 'proforma' | 'delivery_note' | 'invoice';
+export type DocumentStatus = 'draft' | 'sent' | 'part_paid' | 'paid' | 'cancelled';
+
+/** Payment methods that move physical cash in the drawer. */
+export const CASH_METHODS: readonly PaymentMethod[] = ['cash'];
+export const MOBILE_MONEY_METHODS: readonly PaymentMethod[] = [
+  'mpesa',
+  'mixx',
+  'airtel',
+  'halopesa',
+];
+
+export interface BusinessSettings {
+  vatRate?: number;
+  receiptFooter?: string;
+  reminderTemplate?: string;
+  bankName?: string;
+  bankAccount?: string;
+  payNumber?: string;
+  docCounters?: Partial<Record<DocumentKind, number>>;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  type: BusinessType;
+  mode: BusinessMode;
+  tin?: string | null;
+  vrn?: string | null;
+  phone?: string | null;
+  logoUrl?: string | null;
+  locale: string;
+  settings: BusinessSettings;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Member {
+  id: string;
+  businessId: string;
+  /** Null while an invite is waiting for that phone number to sign in. */
+  userId: string | null;
+  name?: string | null;
+  phone?: string | null;
+  role: MemberRole;
+  pinHash?: string | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Product {
+  id: string;
+  businessId: string;
+  name: string;
+  unit: ProductUnit;
+  unitLabel?: string | null;
+  price: number;
+  cost?: number | null;
+  trackStock: boolean;
+  lowStockLevel?: number | null;
+  icon?: string | null;
+  photoUrl?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+  category?: string | null;
+  vatType: VatType;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface PriceHistoryEntry {
+  id: string;
+  businessId: string;
+  productId: string;
+  price: number;
+  effectiveDate: string;
+  createdAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  businessId: string;
+  productId: string;
+  /** Signed: negative leaves the stall, positive arrives. */
+  qty: number;
+  type: MovementType;
+  reason?: WasteReason | null;
+  refId?: string | null;
+  unitCost?: number | null;
+  note?: string | null;
+  createdAt: string;
+  createdBy?: string | null;
+}
+
+export interface Customer {
+  id: string;
+  businessId: string;
+  name: string;
+  phone?: string | null;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Supplier {
+  id: string;
+  businessId: string;
+  name: string;
+  phone?: string | null;
+  note?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Sale {
+  id: string;
+  businessId: string;
+  customerId?: string | null;
+  total: number;
+  discount: number;
+  status: SaleStatus;
+  voidReason?: string | null;
+  receiptToken: string;
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SaleLine {
+  id: string;
+  businessId: string;
+  saleId: string;
+  productId?: string | null;
+  description?: string | null;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  unitCost?: number | null;
+  vatType: VatType;
+}
+
+export interface Payment {
+  id: string;
+  businessId: string;
+  saleId?: string | null;
+  customerId?: string | null;
+  supplierId?: string | null;
+  purchaseId?: string | null;
+  documentId?: string | null;
+  direction: PaymentDirection;
+  method: PaymentMethod;
+  amount: number;
+  reference?: string | null;
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Expense {
+  id: string;
+  businessId: string;
+  category: ExpenseCategory;
+  amount: number;
+  method: PaymentMethod;
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
+export interface Purchase {
+  id: string;
+  businessId: string;
+  supplierId?: string | null;
+  total: number;
+  paidAmount: number;
+  method: PaymentMethod;
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
+export interface PurchaseLine {
+  id: string;
+  businessId: string;
+  purchaseId: string;
+  productId: string;
+  qty: number;
+  totalCost: number;
+}
+
+export interface WasteEvent {
+  id: string;
+  businessId: string;
+  productId: string;
+  qty: number;
+  reason: WasteReason;
+  costValue: number;
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+
+export interface DayClosing {
+  id: string;
+  businessId: string;
+  date: string;
+  openingCash: number;
+  expectedCash: number;
+  countedCash: number;
+  difference: number;
+  note?: string | null;
+  createdBy?: string | null;
+  createdAt: string;
+}
+
+export interface BusinessDocument {
+  id: string;
+  businessId: string;
+  kind: DocumentKind;
+  number: string;
+  customerId?: string | null;
+  parentId?: string | null;
+  status: DocumentStatus;
+  subtotal: number;
+  vat: number;
+  total: number;
+  notes?: string | null;
+  dueDate?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
+export interface DocumentLine {
+  id: string;
+  businessId: string;
+  documentId: string;
+  productId?: string | null;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  vatType: VatType;
+  lineTotal: number;
+}
+
+/** A write waiting to reach the server. Drained in insertion order. */
+export interface OutboxEntry {
+  /** Auto-incremented by Dexie; preserves ordering. */
+  seq?: number;
+  /** Table name, matching the Postgres table. */
+  table: string;
+  /** Primary key of the row, so a retry upserts rather than duplicates. */
+  rowId: string;
+  businessId: string;
+  /**
+   * insert: first write of this row -- pushed as insert-or-ignore, so retrying an
+   * already-delivered row is a no-op even for roles with no UPDATE permission.
+   * upsert: an edit of a row that already existed.
+   */
+  op: 'insert' | 'upsert';
+  payload: Record<string, unknown>;
+  createdAt: string;
+  attempts: number;
+  lastError?: string | null;
+}
