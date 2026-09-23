@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.0 — buying in bulk, and what each product earns (2026-09-23)
+
+From the first round of feedback on 0.1.0.
+
+### Prices come before selling
+- Setting up now ends on **Bei za leo** instead of the till: a new owner sets starting prices as the last step of onboarding, then lands on the sales screen. Onboarding itself is still three screens.
+- The sales screen shows a banner when any product still has no price, linking straight to the price screen. (Tapping a price-less tile still opens the keypad, as before.)
+
+### Stock purchases are a tab, and use the sizes stock is actually bought in
+- **Manunuzi now sits in the bottom bar, next to Mauzo** rather than under Zaidi. Five tabs: Mauzo, Manunuzi, Madeni, Hesabu, Zaidi.
+- A product can carry the **bulk sizes it is bought in** — a *tenga* of tomatoes, a 50kg *gunia* of rice, a *katoni* of soap — each recording how many selling units it holds. Edited on the product, under *Ununuzi wa jumla*.
+- Buying now asks **which size** and **how many**, not a vague "how much stock", and converts in front of the user before saving: "2 tenga → 80 fungu · 750 kwa fungu", followed by "unauza 1,000 — faida 250 kwa fungu", or a warning when the buying price is above the selling price.
+- Buying loose is still one tap (*Kimoja kimoja*), and the purchase keeps what was actually bought ("2 × tenga"), so it reads back the way it was entered.
+- New table `product_packs` with its own RLS: everyone in the business can read the sizes, owners and managers maintain them.
+
+### Profit per product
+- New **Faida kwa bidhaa** screen (Zaidi → Faida kwa bidhaa, owners and managers): over 7 or 30 days, each product's quantity sold, sales, cost of what was sold, profit and margin, ranked by what actually earned.
+- Each line also shows the current buy-versus-sell per unit and what was spent restocking it, so a thin margin is visible before it becomes a bad month. Products losing money are flagged, and a product whose sales could not be costed says so rather than counting as pure profit.
+
+### Also
+- The app has a **logo**: a ruled book — the daftari a trader already keeps — in the app's own green. Used for the installed-app icon and on the sign-in screen.
+- The demo business now buys in packs and restocks a few lines each morning, so its numbers behave like a real stall.
+
+
 ## 0.1.0 — MVP, phases 0–7 (2026-09-21)
 
 The whole build plan, built in one pass. The plan says to field-test genge and duka modes with real users after Phase 5, before biashara mode. That hasn't happened yet, so treat Phase 6 as unvalidated with users.

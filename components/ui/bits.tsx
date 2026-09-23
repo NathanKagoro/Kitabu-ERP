@@ -50,7 +50,7 @@ export function PageHeader({
         )}
         <div className={cn('min-w-0 flex-1', !back && 'pl-2')}>
           <h1 className="truncate text-lg leading-tight font-bold">{title}</h1>
-          {subtitle ? <p className="truncate text-sm text-ink-soft">{subtitle}</p> : null}
+          {subtitle ? <p className="line-clamp-2 text-sm leading-snug text-ink-soft">{subtitle}</p> : null}
         </div>
         {action}
       </div>

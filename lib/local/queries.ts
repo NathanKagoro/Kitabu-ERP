@@ -6,7 +6,17 @@ import { balancesByCustomer, lastPaymentByCustomer } from '../calc/credit';
 import { stockByProduct } from '../calc/stock';
 import { dayBounds } from '../date';
 import type { EntityTable } from 'dexie';
-import type { Customer, Expense, Payment, Product, Purchase, Sale, SaleLine, WasteEvent } from '../types';
+import type {
+  Customer,
+  Expense,
+  Payment,
+  Product,
+  ProductPack,
+  Purchase,
+  Sale,
+  SaleLine,
+  WasteEvent,
+} from '../types';
 import { db } from './db';
 
 /*
@@ -22,6 +32,20 @@ export function useProducts(businessId: string | null, includeArchived = false) 
       .filter((p) => !p.deletedAt && (includeArchived || p.active))
       .sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
   }, [businessId, includeArchived]);
+}
+
+/** Bulk sizes per product, for the purchases screen. */
+export function usePacks(businessId: string | null) {
+  return useLiveQuery(async () => {
+    const byProduct = new Map<string, ProductPack[]>();
+    if (!businessId) return byProduct;
+    const rows = await db().productPacks.where('businessId').equals(businessId).toArray();
+    for (const pack of rows) {
+      if (!pack.active || pack.deletedAt) continue;
+      byProduct.set(pack.productId, [...(byProduct.get(pack.productId) ?? []), pack]);
+    }
+    return byProduct;
+  }, [businessId]);
 }
 
 export function useStock(businessId: string | null) {

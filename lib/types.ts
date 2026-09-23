@@ -116,6 +116,26 @@ export interface Product {
   deletedAt?: string | null;
 }
 
+/**
+ * A bulk size a product is bought in: a tenga of tomatoes, a 50kg gunia of
+ * rice, a carton of soap. `units` is how many selling units it holds, which is
+ * what turns "I bought 2 tenga for 60,000" into a cost per fungu.
+ */
+export interface ProductPack {
+  id: string;
+  businessId: string;
+  productId: string;
+  /** What the trader calls it: "tenga", "gunia 50kg", "katoni". */
+  label: string;
+  /** Selling units in one pack. 1 tenga = 40 fungu -> 40. */
+  units: number;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
 export interface PriceHistoryEntry {
   id: string;
   businessId: string;
@@ -242,8 +262,13 @@ export interface PurchaseLine {
   businessId: string;
   purchaseId: string;
   productId: string;
+  /** Always in selling units, so stock maths never has to know about packs. */
   qty: number;
   totalCost: number;
+  /** What was actually bought, kept so the purchase can be read back honestly. */
+  packId?: string | null;
+  packLabel?: string | null;
+  packQty?: number | null;
 }
 
 export interface WasteEvent {

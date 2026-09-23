@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { AmountInput, Field } from '@/components/ui/field';
 import { useToast } from '@/components/ui/toast';
 import { stockOnHand } from '@/lib/calc/stock';
-import { adjustStock, archiveProduct, saveProduct } from '@/lib/local/actions';
+import { adjustStock, archiveProduct, saveProduct, saveProductPacks } from '@/lib/local/actions';
 import { db } from '@/lib/local/db';
 import { formatQty } from '@/lib/units';
 
@@ -29,8 +29,11 @@ export default function EditProductPage() {
   const data = useLiveQuery(async () => {
     const product = await db().products.get(id);
     if (!product) return null;
-    const movements = await db().stockMovements.where('productId').equals(id).toArray();
-    return { product, onHand: stockOnHand(movements) };
+    const [movements, packs] = await Promise.all([
+      db().stockMovements.where('productId').equals(id).toArray(),
+      db().productPacks.where('productId').equals(id).toArray(),
+    ]);
+    return { product, packs, onHand: stockOnHand(movements) };
   }, [id]);
 
   if (!data) return <PageHeader title={t('edit')} />;
@@ -43,10 +46,18 @@ export default function EditProductPage() {
       <PageHeader title={product.name} />
       <ProductForm
         key={product.id}
-        initial={draftFrom(product)}
+        initial={draftFrom(product, data.packs)}
         submitLabel={tc('save')}
         onSubmit={async (draft) => {
-          await saveProduct({ ...product, ...draft });
+          const { packs, ...fields } = draft;
+          await saveProduct({ ...product, ...fields });
+          if (businessId) {
+            await saveProductPacks({
+              businessId,
+              productId: product.id,
+              packs: packs.map((pack) => ({ id: pack.id, label: pack.label, units: Number(pack.units) })),
+            });
+          }
           toast(tc('saved'));
           router.back();
         }}

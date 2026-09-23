@@ -70,21 +70,16 @@ async function signUpAndOnboard(page: Page) {
     void round;
     for (const digit of '1234') await page.getByRole('button', { name: digit, exact: true }).click();
   }
+  // Prices come before the till, so setting up ends here.
+  await page.waitForURL('**/bei**');
+  await page.getByLabel(/^Nyanya/).fill('1000');
+  await page.getByRole('button', { name: 'Hifadhi na anza kuuza' }).click();
   await page.waitForURL('**/mauzo');
 }
 
 test('three offline sales sync exactly once when the connection returns', async ({ page, context }) => {
   const server = await fakeSupabase(page);
   await signUpAndOnboard(page);
-
-  // Morning prices, set while still online.
-  await page.goto('/bei');
-  await page.getByLabel(/^Nyanya/).fill('1000');
-  await page.getByRole('button', { name: 'Hifadhi bei zote' }).click();
-  await expect(page.getByText(/Bei 1 zimebadilishwa/)).toBeVisible();
-
-  await page.getByRole('link', { name: 'Mauzo' }).click();
-  await page.waitForURL('**/mauzo');
 
   // Installable offline: the service worker is registered and active.
   await expect

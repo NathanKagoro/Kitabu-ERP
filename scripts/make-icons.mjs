@@ -2,9 +2,9 @@
 /**
  * Generates the PWA icons as real PNGs, with no image dependency.
  *
- * These are placeholders in the sense that a designer should replace the mark,
- * but not in the sense of being broken: they are correctly sized, maskable-safe
- * (the glyph sits inside the 80% safe zone) and installable today.
+ * The mark is a ruled book -- the daftari every trader already keeps -- in the
+ * app's own green and paper colours. Geometry is kept in a 24-unit space so it
+ * matches components/brand/logo.tsx exactly; change one, change the other.
  */
 import { deflateSync } from 'node:zlib';
 import { writeFileSync, mkdirSync } from 'node:fs';
@@ -16,36 +16,61 @@ const outDir = join(root, 'public', 'icons');
 mkdirSync(outDir, { recursive: true });
 
 const BRAND = [0x0f, 0x6b, 0x3f];
-const PAPER = [0xff, 0xff, 0xff];
+const SPINE = [0xc9, 0xc2, 0xb4]; // page edges, the line colour from the app
+const PAPER = [0xfa, 0xf8, 0xf4];
 
-/** Block-letter H on a 10x10 grid, centred in the maskable safe zone. */
-const GLYPH = [
-  '..........',
-  '..........',
-  '..##..##..',
-  '..##..##..',
-  '..######..',
-  '..######..',
-  '..##..##..',
-  '..##..##..',
-  '..........',
-  '..........',
+/**
+ * Rounded rectangles in a 24x24 space, painted in order: a closed book with its
+ * spine to the left and three ruled lines. Later shapes cover earlier ones,
+ * which is how the spine keeps round corners on the left and a straight edge
+ * where the cover sits on top of it.
+ */
+const SHAPES = [
+  { x: 4.4, y: 3.8, w: 6.4, h: 16.4, r: 1.8, colour: SPINE },
+  { x: 7.6, y: 3.8, w: 12, h: 16.4, r: 1.8, colour: PAPER },
+  { x: 10.2, y: 7.8, w: 6.6, h: 1.35, r: 0.67, colour: BRAND },
+  { x: 10.2, y: 11.3, w: 6.6, h: 1.35, r: 0.67, colour: BRAND },
+  { x: 10.2, y: 14.8, w: 4, h: 1.35, r: 0.67, colour: BRAND },
 ];
+
+/** Inside a rounded rectangle? Corner circles, straight edges elsewhere. */
+function inside(shape, x, y) {
+  const { x: sx, y: sy, w, h, r } = shape;
+  if (x < sx || x > sx + w || y < sy || y > sy + h) return false;
+  const cx = Math.min(Math.max(x, sx + r), sx + w - r);
+  const cy = Math.min(Math.max(y, sy + r), sy + h - r);
+  const dx = x - cx;
+  const dy = y - cy;
+  return dx * dx + dy * dy <= r * r + 1e-9;
+}
+
+const SAMPLES = 4; // supersampling, so edges are not jagged
 
 function render(size) {
   const pixels = Buffer.alloc(size * size * 3);
-  const cell = size / 10;
+  const scale = 24 / size;
 
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
-      const gx = Math.min(9, Math.floor(x / cell));
-      const gy = Math.min(9, Math.floor(y / cell));
-      const on = GLYPH[gy][gx] === '#';
-      const colour = on ? PAPER : BRAND;
-      const offset = (y * size + x) * 3;
-      pixels[offset] = colour[0];
-      pixels[offset + 1] = colour[1];
-      pixels[offset + 2] = colour[2];
+  for (let py = 0; py < size; py++) {
+    for (let px = 0; px < size; px++) {
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      for (let sy = 0; sy < SAMPLES; sy++) {
+        for (let sx = 0; sx < SAMPLES; sx++) {
+          const x = (px + (sx + 0.5) / SAMPLES) * scale;
+          const y = (py + (sy + 0.5) / SAMPLES) * scale;
+          let colour = BRAND;
+          for (const shape of SHAPES) if (inside(shape, x, y)) colour = shape.colour;
+          r += colour[0];
+          g += colour[1];
+          b += colour[2];
+        }
+      }
+      const n = SAMPLES * SAMPLES;
+      const offset = (py * size + px) * 3;
+      pixels[offset] = Math.round(r / n);
+      pixels[offset + 1] = Math.round(g / n);
+      pixels[offset + 2] = Math.round(b / n);
     }
   }
   return pixels;

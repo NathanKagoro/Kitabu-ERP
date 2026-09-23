@@ -8,7 +8,7 @@ import { draftFrom, ProductForm } from '@/components/products/product-form';
 import { EmptyState, PageHeader } from '@/components/ui/bits';
 import { useToast } from '@/components/ui/toast';
 import { nowIso } from '@/lib/date';
-import { saveProduct } from '@/lib/local/actions';
+import { saveProduct, saveProductPacks } from '@/lib/local/actions';
 import { db } from '@/lib/local/db';
 import { uuidv7 } from '@/lib/uuid';
 
@@ -32,9 +32,11 @@ export default function NewProductPage() {
           if (!businessId) return;
           const count = await db().products.where('businessId').equals(businessId).count();
           const at = nowIso();
+          const { packs, ...fields } = draft;
+          const id = uuidv7();
           await saveProduct({
-            ...draft,
-            id: uuidv7(),
+            ...fields,
+            id,
             businessId,
             photoUrl: null,
             sortOrder: count,
@@ -42,6 +44,11 @@ export default function NewProductPage() {
             createdAt: at,
             updatedAt: at,
             deletedAt: null,
+          });
+          await saveProductPacks({
+            businessId,
+            productId: id,
+            packs: packs.map((pack) => ({ id: pack.id, label: pack.label, units: Number(pack.units) })),
           });
           toast(tc('saved'));
           router.back();

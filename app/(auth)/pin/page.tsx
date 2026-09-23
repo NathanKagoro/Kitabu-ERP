@@ -15,5 +15,6 @@ export default function SetPinPage() {
   }, [ready, userId, router]);
 
   if (!ready || !member) return null;
-  return <PinLock mode="set" onDone={() => router.replace('/mauzo')} />;
+  // Prices come before the first sale: a tile with no price cannot be sold.
+  return <PinLock mode="set" onDone={() => router.replace('/bei?anza=1')} />;
 }

@@ -8,7 +8,9 @@ import {
   recordSale,
   recordWaste,
   saveProduct,
+  saveProductPacks,
 } from './local/actions';
+import { packToUnits } from './calc/packs';
 import { addDays, businessDay, dayBounds } from './date';
 import { db } from './local/db';
 import { loadRange } from './local/queries';
@@ -22,6 +24,20 @@ import type { ExpenseCategory, Product } from './types';
  *
  * Seeded with a fixed PRNG so every demo looks the same.
  */
+
+/** What each product is bought by, and how many selling units that holds. */
+const PACKS: Record<string, { label: string; units: number }> = {
+  Nyanya: { label: 'tenga', units: 40 },
+  Vitunguu: { label: 'gunia', units: 50 },
+  'Sukuma wiki': { label: 'tita', units: 25 },
+  Mchicha: { label: 'tita', units: 25 },
+  Ndizi: { label: 'mkungu', units: 60 },
+  Viazi: { label: 'gunia', units: 50 },
+  Karoti: { label: 'gunia', units: 40 },
+  Hoho: { label: 'ndoo', units: 30 },
+  Nazi: { label: 'gunia', units: 30 },
+  Limau: { label: 'ndoo', units: 40 },
+};
 
 const PRICES: Record<string, { price: number; cost: number }> = {
   Nyanya: { price: 1000, cost: 600 },
@@ -63,6 +79,10 @@ export async function createDemoBusiness(userId: string, name: string, locale: s
     const p = PRICES[product.name];
     const next = { ...product, price: p?.price ?? 1000, trackStock: true, lowStockLevel: 5 };
     await saveProduct(next);
+    const bulk = PACKS[product.name];
+    if (bulk) {
+      await saveProductPacks({ businessId, productId: product.id, packs: [bulk] });
+    }
     priced.push(next);
   }
 
@@ -82,10 +102,36 @@ export async function createDemoBusiness(userId: string, name: string, locale: s
       businessId,
       userId,
       at: at(6),
-      lines: priced.slice(0, 6).map((p) => {
-        const qty = 8 + Math.floor(random() * 6);
-        return { productId: p.id, qty, totalCost: qty * (PRICES[p.name]?.cost ?? 600) };
-      }),
+      lines: await Promise.all(
+        // Three lines a morning, rotating, so buying stays below selling.
+        priced
+          .filter((_, index) => index % 3 === daysAgo % 3)
+          .slice(0, 3)
+          .map(async (p) => {
+          const bulk = PACKS[p.name];
+          const cost = PRICES[p.name]?.cost ?? 600;
+          if (!bulk) {
+            const qty = 8 + Math.floor(random() * 6);
+            return { productId: p.id, qty, totalCost: qty * cost };
+          }
+          // A morning at Kariakoo: a crate here, half a sack there.
+          const packQty = random() < 0.6 ? 0.5 : 1;
+          const qty = packToUnits(packQty, bulk.units);
+          const pack = await db()
+            .productPacks.where('productId')
+            .equals(p.id)
+            .filter((row) => row.active)
+            .first();
+          return {
+            productId: p.id,
+            qty,
+            totalCost: Math.round(qty * cost),
+            packId: pack?.id ?? null,
+            packLabel: bulk.label,
+            packQty,
+          };
+        })
+      ),
     });
 
     await recordExpense({ businessId, userId, at: at(7), category: 'nauli', amount: 3000 });

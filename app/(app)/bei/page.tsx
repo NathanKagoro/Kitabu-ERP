@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
 import { PageHeader } from '@/components/ui/bits';
@@ -17,11 +18,15 @@ import { formatTZS, parseTZS } from '@/lib/money';
  * The morning after Kariakoo: one list, every price pre-filled with what it was
  * yesterday, change the ones that moved, one save. Nothing else on the screen.
  */
-export default function DailyPricesPage() {
+function DailyPrices() {
   const t = useTranslations('prices');
   const tp = useTranslations('products');
   const toast = useToast();
   const { businessId, userId } = useApp();
+  const router = useRouter();
+  // First run: this screen is the last step of setting up, so it says so and
+  // hands over to the till when it is done.
+  const firstRun = useSearchParams().get('anza') === '1';
   const products = useProducts(businessId);
   const [values, setValues] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -39,12 +44,17 @@ export default function DailyPricesPage() {
     }
     const changed = await updatePrices({ businessId, userId, prices });
     setBusy(false);
+    if (firstRun) return router.replace('/mauzo');
     toast(changed ? t('updated', { count: changed }) : t('noChanges'), changed ? 'ok' : 'info');
   };
 
   return (
     <>
-      <PageHeader title={t('title')} subtitle={t('subtitle')} />
+      <PageHeader
+        title={firstRun ? t('firstRunTitle') : t('title')}
+        subtitle={firstRun ? t('firstRunBody') : t('subtitle')}
+        back={!firstRun}
+      />
       <ul className="divide-y divide-line pb-24">
         {products?.map((product) => {
           const parsed = parseTZS(valueOf(product.id, product.price));
@@ -71,10 +81,23 @@ export default function DailyPricesPage() {
       <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom,0px))] z-30 border-t border-line bg-surface p-2.5">
         <div className="mx-auto max-w-lg">
           <Button size="xl" block disabled={busy} onClick={() => void save()}>
-            {t('saveAll')}
+            {firstRun ? t('firstRunSave') : t('saveAll')}
           </Button>
+          {firstRun && (
+            <Button variant="ghost" block className="mt-1" onClick={() => router.replace('/mauzo')}>
+              {t('firstRunSkip')}
+            </Button>
+          )}
         </div>
       </div>
     </>
+  );
+}
+
+export default function DailyPricesPage() {
+  return (
+    <Suspense>
+      <DailyPrices />
+    </Suspense>
   );
 }

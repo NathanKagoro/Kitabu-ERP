@@ -40,16 +40,18 @@ tap "Lipa taslimu"
 
 - **Money** is integer TZS everywhere, formatted only by `formatTZS()` in `lib/money.ts`.
 - **Stock** is never stored. It is the sum of the append-only `stock_movements` ledger.
+- **Bulk sizes** (`product_packs`) convert a purchase into selling units at the moment it is recorded, so everything downstream — stock, cost, profit — works in one unit.
 - **Balances** (the daftari, what's owed to suppliers) are derived from payments, in `lib/calc/credit.ts` and in the SQL views.
 - **Calculations** live in `lib/calc/*`, are pure functions, and are unit-tested.
 - **Modes** (genge / duka / biashara) only decide what's visible (`lib/modes.ts`). Switching never changes data.
 - **Security** is RLS in `db/migrations/0001_rls_views_functions.sql`. Roles are enforced there, and the UI mirrors them.
 
 ```
-app/(app)/…        screens: mauzo, madeni, hesabu, zaidi, bidhaa, bei, hasara, matumizi, manunuzi, wauzaji, hati, wafanyakazi, mipangilio
+app/(app)/…        screens: mauzo, manunuzi, madeni, hesabu, zaidi, bidhaa, bei, hasara,
+                   matumizi, faida, wauzaji, hati, wafanyakazi, mipangilio
 app/(auth), (onboard)  sign-in, PIN, 3-screen onboarding
 app/r/[token]      public receipt page
-components/        ui primitives, POS, credit, summary; icons.tsx is generated (npm run icons)
+components/        ui primitives, POS, credit, summary; brand mark; icons/ is generated (npm run icons)
 lib/calc/          money, stock, credit and summary maths
 lib/local/         Dexie store, domain actions, live queries, documents
 lib/sync/          outbox → Supabase sync

@@ -1,6 +1,6 @@
 'use client';
 
-import { BookUser, LayoutGrid, Menu, Wallet } from '@/components/icons';
+import { BookUser, LayoutGrid, Menu, ShoppingCart, Wallet } from '@/components/icons';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -9,6 +9,9 @@ import { cn } from '@/lib/cn';
 
 const ITEMS = [
   { href: '/mauzo', key: 'sales', Icon: Wallet },
+  // Buying stock is the other half of a trading day, so it gets a tab of its
+  // own rather than hiding under "Zaidi".
+  { href: '/manunuzi', key: 'purchases', Icon: ShoppingCart },
   { href: '/madeni', key: 'credit', Icon: BookUser },
   { href: '/hesabu', key: 'summary', Icon: LayoutGrid },
   { href: '/zaidi', key: 'more', Icon: Menu },
@@ -32,12 +35,12 @@ export function BottomNav() {
                 href={href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'flex h-[68px] flex-col items-center justify-center gap-1',
+                  'flex h-[68px] flex-col items-center justify-center gap-0.5 px-0.5',
                   active ? 'text-brand' : 'text-ink-faint'
                 )}
               >
-                <Icon size={24} strokeWidth={active ? 2.4 : 2} />
-                <span className={cn('text-xs', active ? 'font-bold' : 'font-medium')}>
+                <Icon size={23} strokeWidth={active ? 2.4 : 2} />
+                <span className={cn('text-[11px] leading-tight', active ? 'font-bold' : 'font-medium')}>
                   {t(key)}
                 </span>
               </Link>

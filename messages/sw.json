@@ -44,7 +44,8 @@
     "sales": "Mauzo",
     "credit": "Madeni",
     "summary": "Hesabu",
-    "more": "Zaidi"
+    "more": "Zaidi",
+    "purchases": "Manunuzi"
   },
   "sync": {
     "synced": "Zimehifadhiwa",
@@ -227,7 +228,14 @@
       "lita": "lita",
       "dazeni": "dazeni",
       "custom": "kipimo"
-    }
+    },
+    "packsTitle": "Ununuzi wa jumla",
+    "packsHint": "Unaponunua, unanunua kwa kipimo gani? Mf. tenga 1 = fungu 40.",
+    "packNameLabel": "Jina la kipimo",
+    "packNamePlaceholder": "Mf. tenga",
+    "packUnitsLabel": "Kina vipande vingapi?",
+    "addPack": "Ongeza kipimo",
+    "removePack": "Ondoa kipimo"
   },
   "prices": {
     "title": "Bei za leo",
@@ -236,7 +244,13 @@
     "saveAll": "Hifadhi bei zote",
     "updated": "Bei {count} zimebadilishwa",
     "noChanges": "Hakuna bei iliyobadilika",
-    "history": "Bei za nyuma"
+    "history": "Bei za nyuma",
+    "firstRunTitle": "Weka bei za kuanzia",
+    "firstRunBody": "Bei huja kabla ya kuuza. Utaweza kuzibadilisha kila asubuhi.",
+    "firstRunSave": "Hifadhi na anza kuuza",
+    "firstRunSkip": "Nitaweka baadaye",
+    "missingBanner": "Bidhaa {count} hazina bei",
+    "setNow": "Weka bei"
   },
   "waste": {
     "title": "Hasara",
@@ -317,7 +331,17 @@
     "recorded": "Manunuzi yameandikwa",
     "costUpdated": "Gharama za bidhaa zimesasishwa",
     "todayTotal": "Manunuzi ya leo",
-    "empty": "Hakuna manunuzi leo"
+    "empty": "Hakuna manunuzi leo",
+    "packLabel": "Ulinunua kwa kipimo gani?",
+    "loosePack": "Kimoja kimoja",
+    "packQtyLabel": "Umenunua ngapi?",
+    "packCostLabel": "Umelipa kiasi gani kwa jumla?",
+    "converted": "Unapata {qty} {unit}",
+    "costEach": "{cost} kwa {unit}",
+    "marginHint": "Unauza {price} — faida {profit} kwa {unit}",
+    "marginLoss": "Tahadhari: unauza {price}, chini ya gharama {cost}",
+    "noPrice": "Bidhaa hii bado haina bei ya kuuza",
+    "addPackHint": "Weka vipimo vya ununuzi kwenye bidhaa ili kuhesabu bei kwa kipande"
   },
   "suppliers": {
     "title": "Wauzaji",
@@ -492,5 +516,23 @@
     "productRequired": "Chagua bidhaa",
     "qtyPositive": "Idadi iwe zaidi ya sifuri",
     "offlineAction": "Hii inahitaji mtandao"
+  },
+  "profit": {
+    "title": "Faida kwa bidhaa",
+    "subtitle": "Ulinunua kwa bei gani dhidi ya uliyouza",
+    "sold": "Imeuzwa",
+    "revenue": "Mauzo",
+    "cost": "Gharama",
+    "profit": "Faida",
+    "margin": "Asilimia",
+    "purchased": "Manunuzi",
+    "perUnit": "Nunua {cost} · uza {price}",
+    "noCost": "Hakuna gharama",
+    "noCostHint": "Andika manunuzi ili tujue faida ya bidhaa hii",
+    "empty": "Bado hakuna mauzo kwenye kipindi hiki",
+    "totals": "Jumla",
+    "bestSeller": "Inayolipa zaidi",
+    "weakest": "Inayolipa kidogo",
+    "losing": "Inakula hasara"
   }
 }

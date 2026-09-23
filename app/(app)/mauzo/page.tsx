@@ -1,6 +1,6 @@
 'use client';
 
-import { History, Plus, Search, ShoppingBasket, Zap } from '@/components/icons';
+import { History, Plus, Search, ShoppingBasket, Tag, Zap } from '@/components/icons';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -39,6 +39,7 @@ export default function SalesPage() {
   const t = useTranslations('sales');
   const tp = useTranslations('products');
   const tc = useTranslations('common');
+  const tprices = useTranslations('prices');
   const te = useTranslations('errors');
   const toast = useToast();
   const { businessId, userId, business, show } = useApp();
@@ -62,6 +63,9 @@ export default function SalesPage() {
   const itemCount = cart.lines.length;
   const editingLine = cart.lines.find((line) => line.id === editingLineId) ?? null;
   const editingProduct = products?.find((p) => p.id === editingLine?.productId);
+
+  // A tile with no price cannot be sold, so say so before it is tapped.
+  const missingPrices = (products ?? []).filter((p) => p.price <= 0).length;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -161,6 +165,17 @@ export default function SalesPage() {
           </div>
         )}
       </header>
+
+      {missingPrices > 0 && (
+        <Link
+          href="/bei"
+          className="mx-3 mt-3 flex items-center gap-2 rounded-[10px] border border-debt/40 bg-debt-tint px-3 py-2.5 text-sm font-semibold text-debt"
+        >
+          <Tag size={18} className="shrink-0" />
+          <span className="flex-1">{tprices('missingBanner', { count: missingPrices })}</span>
+          <span className="underline">{tprices('setNow')}</span>
+        </Link>
+      )}
 
       {products && products.length === 0 ? (
         <EmptyState

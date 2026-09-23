@@ -263,3 +263,58 @@ describe('offline outbox and sync', () => {
     for (const call of server.calls) for (const row of call.rows) expect(row).not.toHaveProperty('synced_at');
   });
 });
+
+describe('buying in bulk', () => {
+  it('records a pack purchase in selling units and prices each unit', async () => {
+    const product = await firstProduct();
+    await actions.saveProductPacks({
+      businessId,
+      productId: product.id,
+      packs: [{ label: 'tenga', units: 40 }],
+    });
+    const [pack] = await db().productPacks.where('productId').equals(product.id).toArray();
+    expect(pack).toMatchObject({ label: 'tenga', units: 40, active: true });
+
+    // "Two tenga for 60,000" -> 80 fungu at 750 each.
+    await actions.recordPurchase({
+      businessId,
+      lines: [
+        { productId: product.id, qty: 80, totalCost: 60000, packId: pack!.id, packLabel: 'tenga', packQty: 2 },
+      ],
+    });
+
+    const movements = await db().stockMovements.where('productId').equals(product.id).toArray();
+    expect(stockOnHand(movements)).toBe(80);
+    expect((await db().products.get(product.id))?.cost).toBe(750);
+
+    const [line] = await db().purchaseLines.toArray();
+    expect(line).toMatchObject({ packLabel: 'tenga', packQty: 2, qty: 80 });
+  });
+
+  it('keeps a pack that has been used, deactivating it instead of dropping it', async () => {
+    const product = await firstProduct();
+    await actions.saveProductPacks({ businessId, productId: product.id, packs: [{ label: 'tenga', units: 40 }] });
+    const [pack] = await db().productPacks.where('productId').equals(product.id).toArray();
+
+    await actions.saveProductPacks({ businessId, productId: product.id, packs: [{ label: 'gunia', units: 50 }] });
+    const rows = await db().productPacks.where('productId').equals(product.id).toArray();
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.id === pack!.id)?.active).toBe(false);
+    expect(rows.find((row) => row.label === 'gunia')?.active).toBe(true);
+  });
+
+  it('an edited pack keeps its id, so past purchases still name it', async () => {
+    const product = await firstProduct();
+    await actions.saveProductPacks({ businessId, productId: product.id, packs: [{ label: 'tenga', units: 40 }] });
+    const [first] = await db().productPacks.where('productId').equals(product.id).toArray();
+
+    await actions.saveProductPacks({
+      businessId,
+      productId: product.id,
+      packs: [{ id: first!.id, label: 'tenga kubwa', units: 45 }],
+    });
+    const rows = await db().productPacks.where('productId').equals(product.id).toArray();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: first!.id, label: 'tenga kubwa', units: 45 });
+  });
+});

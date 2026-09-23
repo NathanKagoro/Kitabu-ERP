@@ -8,9 +8,9 @@ import {
   Package,
   Receipt,
   Settings,
-  ShoppingCart,
   Tag,
   Trash,
+  TrendingUp,
   Truck,
   Users,
 } from '@/components/icons';
@@ -52,7 +52,7 @@ export default function MorePage() {
       title: t('more.sections.money'),
       items: [
         { href: '/matumizi', label: t('expenses.title'), icon: <Receipt size={22} />, feature: 'expenses', permission: 'recordExpense' },
-        { href: '/manunuzi', label: t('purchases.title'), icon: <ShoppingCart size={22} />, feature: 'purchases', permission: 'recordPurchase' },
+        { href: '/faida', label: t('profit.title'), icon: <TrendingUp size={22} />, permission: 'viewProfit' },
         { href: '/wauzaji', label: t('suppliers.title'), icon: <Truck size={22} />, feature: 'suppliers', permission: 'recordPurchase' },
       ],
     },

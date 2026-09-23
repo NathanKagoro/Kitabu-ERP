@@ -11,9 +11,11 @@ import { cn } from '@/lib/cn';
 import { parseTZS } from '@/lib/money';
 import { PRODUCT_ICONS } from '@/lib/onboarding/starter-products';
 import { PRODUCT_UNITS } from '@/lib/units';
-import type { Product, ProductUnit, VatType } from '@/lib/types';
+import type { Product, ProductPack, ProductUnit, VatType } from '@/lib/types';
+import { PackEditor, type PackDraft } from './pack-editor';
 
 export interface ProductDraft {
+  packs: PackDraft[];
   name: string;
   unit: ProductUnit;
   unitLabel: string | null;
@@ -28,8 +30,12 @@ export interface ProductDraft {
   vatType: VatType;
 }
 
-export function draftFrom(product?: Product | null): ProductDraft {
+export function draftFrom(product?: Product | null, packs: readonly ProductPack[] = []): ProductDraft {
   return {
+    packs: packs
+      .filter((pack) => pack.active && !pack.deletedAt)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map((pack) => ({ id: pack.id, label: pack.label, units: String(pack.units) })),
     name: product?.name ?? '',
     unit: product?.unit ?? 'kipande',
     unitLabel: product?.unitLabel ?? null,
@@ -75,6 +81,7 @@ export function ProductForm({
       price: parseTZS(price) ?? 0,
       cost: parseTZS(cost),
       lowStockLevel: low.trim() ? Number(low) : null,
+      packs: draft.packs.filter((pack) => pack.label.trim() && Number(pack.units) > 0),
     });
   };
 
@@ -122,6 +129,13 @@ export function ProductForm({
         </Field>
       </div>
       <p className="-mt-3 text-xs text-ink-faint">{t('costHint')}</p>
+
+      <PackEditor
+        packs={draft.packs}
+        unit={draft.unit}
+        unitName={draft.unit === 'custom' ? draft.unitLabel || t('unitsShort.custom') : t(`unitsShort.${draft.unit}`)}
+        onChange={(packs) => set('packs', packs)}
+      />
 
       <label className="flex min-h-14 items-center gap-3 rounded-[10px] border border-line-strong bg-surface px-3">
         <input type="checkbox" className="h-6 w-6 accent-[var(--color-brand)]" checked={draft.trackStock} onChange={(e) => set('trackStock', e.target.checked)} />

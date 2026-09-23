@@ -15,6 +15,13 @@
       "when": 1790020523932,
       "tag": "0001_rls_views_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790180272346,
+      "tag": "0002_product_packs",
+      "breakpoints": true
     }
   ]
 }

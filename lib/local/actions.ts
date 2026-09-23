@@ -11,6 +11,7 @@ import type {
   PaymentMethod,
   PriceHistoryEntry,
   Product,
+  ProductPack,
   Purchase,
   PurchaseLine,
   Sale,
@@ -255,6 +256,41 @@ export async function saveProduct(product: Product): Promise<void> {
   await persist('products', { ...product, updatedAt: nowIso() });
 }
 
+/**
+ * Replaces a product's bulk sizes. Packs already used by a past purchase are
+ * deactivated rather than dropped, so an old purchase still reads back as
+ * "2 tenga" years later.
+ */
+export async function saveProductPacks(
+  input: Actor & { productId: string; packs: readonly { id?: string; label: string; units: number }[] }
+): Promise<void> {
+  const at = nowIso();
+  const existing = await db().productPacks.where('productId').equals(input.productId).toArray();
+  const kept = new Set(input.packs.map((pack) => pack.id).filter(Boolean) as string[]);
+
+  const rows: ProductPack[] = input.packs.map((pack, index) => {
+    const previous = pack.id ? existing.find((row) => row.id === pack.id) : undefined;
+    return {
+      id: previous?.id ?? uuidv7(),
+      businessId: input.businessId,
+      productId: input.productId,
+      label: pack.label.trim(),
+      units: pack.units,
+      sortOrder: index,
+      active: true,
+      createdAt: previous?.createdAt ?? at,
+      updatedAt: at,
+      deletedAt: null,
+    };
+  });
+
+  for (const row of existing) {
+    if (!kept.has(row.id) && row.active) rows.push({ ...row, active: false, updatedAt: at });
+  }
+
+  if (rows.length > 0) await persist('productPacks', rows);
+}
+
 export async function archiveProduct(product: Product): Promise<void> {
   await persist('products', { ...product, active: false, updatedAt: nowIso() });
 }
@@ -409,8 +445,13 @@ export async function recordExpense(
 
 export interface PurchaseLineInput {
   productId: string;
+  /** In selling units. Use packToUnits() when the trader bought a bulk pack. */
   qty: number;
   totalCost: number;
+  /** What was bought, when it was a pack: "2 tenga" rather than "80 fungu". */
+  packId?: string | null;
+  packLabel?: string | null;
+  packQty?: number | null;
 }
 
 /**
@@ -456,6 +497,9 @@ export async function recordPurchase(
     productId: line.productId,
     qty: line.qty,
     totalCost: Math.round(line.totalCost),
+    packId: line.packId ?? null,
+    packLabel: line.packLabel ?? null,
+    packQty: line.packQty ?? null,
   }));
 
   const movements: StockMovement[] = [];

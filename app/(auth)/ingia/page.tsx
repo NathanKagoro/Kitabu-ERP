@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
 import { formatPhone, normalisePhone } from '@/lib/auth/phone';
@@ -53,9 +54,7 @@ export default function SignInPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col px-5 pt-16 pb-8">
-      <div className="mb-8 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-2xl font-black text-white">
-        H
-      </div>
+      <Logo size={56} className="mb-8" />
 
       {step === 'phone' ? (
         <form

@@ -44,7 +44,8 @@
     "sales": "Sales",
     "credit": "Credit",
     "summary": "Summary",
-    "more": "More"
+    "more": "More",
+    "purchases": "Stock"
   },
   "sync": {
     "synced": "All saved",
@@ -227,7 +228,14 @@
       "lita": "litre",
       "dazeni": "dozen",
       "custom": "unit"
-    }
+    },
+    "packsTitle": "Buying in bulk",
+    "packsHint": "What size do you buy it in? e.g. 1 crate = 40 heaps.",
+    "packNameLabel": "Size name",
+    "packNamePlaceholder": "e.g. crate",
+    "packUnitsLabel": "How many inside?",
+    "addPack": "Add a size",
+    "removePack": "Remove size"
   },
   "prices": {
     "title": "Today's prices",
@@ -236,7 +244,13 @@
     "saveAll": "Save all prices",
     "updated": "{count} prices updated",
     "noChanges": "No price changed",
-    "history": "Past prices"
+    "history": "Past prices",
+    "firstRunTitle": "Set your starting prices",
+    "firstRunBody": "Prices come before selling. You can change them every morning.",
+    "firstRunSave": "Save and start selling",
+    "firstRunSkip": "I'll do it later",
+    "missingBanner": "{count} products have no price",
+    "setNow": "Set prices"
   },
   "waste": {
     "title": "Losses",
@@ -317,7 +331,17 @@
     "recorded": "Purchase recorded",
     "costUpdated": "Product costs updated",
     "todayTotal": "Today's purchases",
-    "empty": "No purchases today"
+    "empty": "No purchases today",
+    "packLabel": "What size did you buy?",
+    "loosePack": "One by one",
+    "packQtyLabel": "How many did you buy?",
+    "packCostLabel": "How much did you pay in total?",
+    "converted": "That is {qty} {unit}",
+    "costEach": "{cost} per {unit}",
+    "marginHint": "You sell at {price} — {profit} profit per {unit}",
+    "marginLoss": "Careful: you sell at {price}, below the {cost} it cost you",
+    "noPrice": "This product has no selling price yet",
+    "addPackHint": "Add buying sizes on the product to get a price per unit"
   },
   "suppliers": {
     "title": "Suppliers",
@@ -492,5 +516,23 @@
     "productRequired": "Choose a product",
     "qtyPositive": "Quantity must be more than zero",
     "offlineAction": "This needs a connection"
+  },
+  "profit": {
+    "title": "Profit by product",
+    "subtitle": "What you paid against what you sold",
+    "sold": "Sold",
+    "revenue": "Sales",
+    "cost": "Cost",
+    "profit": "Profit",
+    "margin": "Margin",
+    "purchased": "Bought",
+    "perUnit": "Buy {cost} · sell {price}",
+    "noCost": "No cost yet",
+    "noCostHint": "Record a purchase so we can work out this product’s profit",
+    "empty": "No sales in this period yet",
+    "totals": "Total",
+    "bestSeller": "Best earner",
+    "weakest": "Weakest",
+    "losing": "Losing money"
   }
 }

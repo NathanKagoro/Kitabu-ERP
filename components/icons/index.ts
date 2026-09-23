@@ -42,6 +42,7 @@ export { Store } from './Store';
 export { Tag } from './Tag';
 export { Trash } from './Trash';
 export { Trash2 } from './Trash2';
+export { TrendingUp } from './TrendingUp';
 export { TriangleAlert } from './TriangleAlert';
 export { Truck } from './Truck';
 export { UserPlus } from './UserPlus';

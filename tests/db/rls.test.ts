@@ -252,3 +252,37 @@ describe('business settings', () => {
     expect(byOwner.affectedRows).toBe(1);
   });
 });
+
+describe('bulk sizes', () => {
+  it('a cashier can read pack sizes but not change them', async () => {
+    const packId = id();
+    const productId = id();
+    await as(USER_A, async () => {
+      await pg.query(`INSERT INTO products (id, business_id, name, unit) VALUES ($1, $2, 'Nyanya', 'fungu')`, [
+        productId,
+        BIZ_A,
+      ]);
+      await pg.query(
+        `INSERT INTO product_packs (id, business_id, product_id, label, units) VALUES ($1, $2, $3, 'tenga', 40)`,
+        [packId, BIZ_A, productId]
+      );
+    });
+
+    expect(await as(CASHIER, () => rows('SELECT label FROM product_packs'))).toEqual([{ label: 'tenga' }]);
+    await expect(
+      as(CASHIER, () =>
+        pg.query(`INSERT INTO product_packs (id, business_id, product_id, label, units) VALUES ($1, $2, $3, 'x', 2)`, [
+          id(),
+          BIZ_A,
+          productId,
+        ])
+      )
+    ).rejects.toThrow(/row-level security/);
+    const edited = await as(CASHIER, () => pg.query(`UPDATE product_packs SET units = 99 WHERE id = $1`, [packId]));
+    expect(edited.affectedRows ?? 0).toBe(0);
+  });
+
+  it('another business cannot see them at all', async () => {
+    expect(await as(USER_B, () => rows('SELECT * FROM product_packs'))).toHaveLength(0);
+  });
+});

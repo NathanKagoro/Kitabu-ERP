@@ -153,6 +153,32 @@ export const products = pgTable(
   (t) => [index('products_business_idx').on(t.businessId, t.active)]
 );
 
+/**
+ * The bulk sizes a product is bought in (a tenga of tomatoes, a 50kg gunia).
+ * `units` converts one pack into selling units, which is what makes a bulk
+ * purchase price comparable with a retail price.
+ */
+export const productPacks = pgTable(
+  'product_packs',
+  {
+    id: uuid('id').primaryKey(),
+    /** Set by the database on every write; the pull cursor. Never trusted from a phone clock. */
+    syncedAt: timestamp('synced_at', { withTimezone: true }).defaultNow().notNull(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    units: qtyCol('units').notNull(),
+    sortOrder: bigint('sort_order', { mode: 'number' }).notNull().default(0),
+    active: boolean('active').notNull().default(true),
+    ...rowStamps,
+  },
+  (t) => [index('product_packs_product_idx').on(t.businessId, t.productId)]
+);
+
 export const priceHistory = pgTable(
   'price_history',
   {
@@ -374,8 +400,13 @@ export const purchaseLines = pgTable(
     productId: uuid('product_id')
       .notNull()
       .references(() => products.id),
+    /** Always in selling units, so stock maths never has to know about packs. */
     qty: qtyCol('qty').notNull(),
     totalCost: money('total_cost').notNull(),
+    /** What was actually bought, kept so a purchase reads back the way it was entered. */
+    packId: uuid('pack_id'),
+    packLabel: text('pack_label'),
+    packQty: qtyCol('pack_qty'),
   },
   (t) => [index('purchase_lines_purchase_idx').on(t.purchaseId)]
 );

@@ -12,6 +12,7 @@ import type {
   Payment,
   PriceHistoryEntry,
   Product,
+  ProductPack,
   Purchase,
   PurchaseLine,
   Sale,
@@ -39,6 +40,7 @@ export class HesabuDB extends Dexie {
   businesses!: EntityTable<Business, 'id'>;
   members!: EntityTable<Member, 'id'>;
   products!: EntityTable<Product, 'id'>;
+  productPacks!: EntityTable<ProductPack, 'id'>;
   priceHistory!: EntityTable<PriceHistoryEntry, 'id'>;
   stockMovements!: EntityTable<StockMovement, 'id'>;
   customers!: EntityTable<Customer, 'id'>;
@@ -81,6 +83,12 @@ export class HesabuDB extends Dexie {
       // payment and the sale it belongs to are both waiting.
       outbox: '++seq, [table+rowId], businessId, createdAt',
       meta: 'key',
+    });
+
+    // v2 adds the bulk sizes a product is bought in. A phone that already has
+    // data keeps it: Dexie only creates the new store.
+    this.version(2).stores({
+      productPacks: 'id, businessId, productId',
     });
   }
 }

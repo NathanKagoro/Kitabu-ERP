@@ -12,6 +12,7 @@ export const PG_TABLE: Record<string, string> = {
   businesses: 'businesses',
   members: 'members',
   products: 'products',
+  productPacks: 'product_packs',
   priceHistory: 'price_history',
   stockMovements: 'stock_movements',
   customers: 'customers',
