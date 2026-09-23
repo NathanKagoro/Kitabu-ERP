@@ -76,6 +76,22 @@ On a real Android phone with Chrome:
 - [ ] Sign in on a second phone with a different number. It sees none of the first business's data.
 - [ ] Invite a cashier by phone number. They sign in, see only that business, and have no void button and no profit line.
 
+## The public demo (Netlify)
+
+There is a demo at **https://hesabu-tz.netlify.app**, deployed from this repo to Netlify rather than Vercel, simply because that account already existed. Nothing in the app is host-specific; `netlify.toml` holds the whole configuration and `@netlify/plugin-nextjs` runs the Next.js server.
+
+```bash
+netlify deploy --build --prod     # from the repo root, once logged in
+```
+
+**The demo has no backend, and that is deliberate.** With no Supabase keys set:
+
+- every visitor gets their own private copy of the data, stored in their own browser, so people can try it without seeing each other's sales;
+- sign-in accepts **any Tanzanian mobile number with the code 123456**;
+- nothing syncs anywhere, and clearing browser data clears the demo.
+
+That makes it safe to hand round, but it is **not** a production deployment. For real users, follow the Supabase and Vercel steps above (or set the same environment variables on Netlify), and leave `NEXT_PUBLIC_DEV_OTP` unset so the fixed code cannot be used.
+
 ## Updating
 
 - **Code**: merge to the production branch, and Vercel deploys it. Users get the new version the next time the app loads online, because the service worker activates it at once.

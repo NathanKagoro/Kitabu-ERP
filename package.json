@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@netlify/plugin-nextjs": "^5.16.0",
     "@playwright/test": "^1.63.0",
     "@serwist/next": "^9.5.12",
     "@tailwindcss/postcss": "^4.3.3",

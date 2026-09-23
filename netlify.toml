@@ -1,0 +1,29 @@
+# Netlify deployment. The plan (docs/DEPLOY.md) targets Vercel; this is the
+# public demo, hosted where the account already existed. Both work: the app is
+# a standard Next.js build, and nothing in it is host-specific.
+
+[build]
+  # `--webpack` is required: the Serwist plugin emits no service worker under
+  # Turbopack, and without it the app cannot open offline.
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# The service worker must never be served stale, or a phone can be pinned to an
+# old build for as long as its cache lives.
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Receipts are shared links to other people's phones; keep them out of search
+# results, as the pages themselves already declare.
+[[headers]]
+  for = "/r/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"
