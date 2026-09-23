@@ -19,8 +19,10 @@ From the first round of feedback on 0.1.0.
 - New **Faida kwa bidhaa** screen (Zaidi → Faida kwa bidhaa, owners and managers): over 7 or 30 days, each product's quantity sold, sales, cost of what was sold, profit and margin, ranked by what actually earned.
 - Each line also shows the current buy-versus-sell per unit and what was spent restocking it, so a thin margin is visible before it becomes a bad month. Products losing money are flagged, and a product whose sales could not be costed says so rather than counting as pure profit.
 
-### Also
-- The app has a **logo**: a ruled book — the daftari a trader already keeps — in the app's own green. Used for the installed-app icon and on the sign-in screen.
+### Branding
+- The app has a **logo**: a ruled book — the daftari a trader already keeps — in the app's own green.
+- It is generated once from a single set of shapes in `scripts/make-icons.mjs` (`npm run icons`) and appears as: the browser tab icon (`app/icon.svg`), the iOS home-screen icon (`app/apple-icon.png`), the installed-app icons (192 and 512), and the link-preview card shown when a receipt link is shared (`app/opengraph-image.tsx`).
+- In the app itself it appears on sign-in, onboarding, the PIN screen, the loading splash, the offline page, the bottom of the More screen, and on the public receipt a customer opens. `components/brand/logo.tsx` is the same mark as SVG.
 - The demo business now buys in packs and restocks a few lines each morning, so its numbers behave like a real stall.
 
 

@@ -20,6 +20,7 @@ import { useTranslations } from 'next-intl';
 import type { ReactNode } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { Logo } from '@/components/brand/logo';
 import { FeedbackButton } from '@/components/feedback';
 import { PageHeader } from '@/components/ui/bits';
 import { signOut } from '@/lib/auth/session';
@@ -94,6 +95,11 @@ export default function MorePage() {
           </section>
         );
       })}
+
+      <section className="flex items-center justify-center gap-2 px-3 pt-6 text-sm font-semibold text-ink-faint">
+        <Logo size={20} />
+        {t('app.name')}
+      </section>
 
       <section className="space-y-2 px-3 pt-4 pb-4">
         <FeedbackButton icon={<MessageSquareText size={22} />} />

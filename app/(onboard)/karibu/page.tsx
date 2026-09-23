@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
@@ -108,6 +109,7 @@ export default function OnboardingPage() {
               </button>
             ))}
           </div>
+          <Logo size={52} className="mb-4" />
           <h1 className="text-2xl font-bold">{t('welcomeTitle')}</h1>
           <p className="mt-1.5 mb-8 text-ink-soft">{t('welcomeBody')}</p>
           <Field label={t('nameTitle')}>

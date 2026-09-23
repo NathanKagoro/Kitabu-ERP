@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
+import { Logo } from '@/components/brand/logo';
 import { Button } from '@/components/ui/button';
 import { useApp } from '@/components/app-provider';
 import { hashPin, verifyPin, type PinHash } from '@/lib/auth/pin';
@@ -86,8 +87,9 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
   const title = mode === 'unlock' ? t('unlockTitle') : confirming ? t('confirmTitle') : t('setTitle');
 
   return (
-    <div className="flex min-h-dvh flex-col justify-between bg-paper px-6 pt-16 pb-8">
-      <div className="text-center">
+    <div className="flex min-h-dvh flex-col justify-between bg-paper px-6 pt-12 pb-8">
+      <div className="flex flex-col items-center text-center">
+        <Logo size={48} className="mb-4" />
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="mt-1.5 text-ink-soft">
           {mode === 'unlock' ? (name ? t('unlockSubtitle', { name }) : '') : t('setSubtitle')}

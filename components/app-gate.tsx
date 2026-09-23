@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { Logo } from '@/components/brand/logo';
 
 import { isUnlockedThisSession } from '@/lib/auth/unlock';
 
@@ -39,8 +40,9 @@ export function AppGate({ children }: { children: ReactNode }) {
 
 function Splash() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-paper">
-      <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-line border-t-brand" />
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-5 bg-paper">
+      <Logo size={64} />
+      <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-line border-t-brand" />
     </div>
   );
 }

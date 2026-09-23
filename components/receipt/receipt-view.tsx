@@ -1,5 +1,6 @@
 import { useTranslations } from 'next-intl';
 
+import { Logo } from '@/components/brand/logo';
 import { formatTZS } from '@/lib/money';
 import { formatQty } from '@/lib/units';
 
@@ -51,6 +52,10 @@ export function ReceiptView({ receipt }: { receipt: ReceiptData }) {
           <span className="tnum">TSh {formatTZS(receipt.sale.total)}</span>
         </p>
         <p className="mt-6 text-center text-sm text-ink-soft">{receipt.business.footer || t('thanks')}</p>
+        <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
+          <Logo size={16} />
+          Hesabu
+        </p>
       </div>
     </article>
   );

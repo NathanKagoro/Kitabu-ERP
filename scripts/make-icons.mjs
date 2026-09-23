@@ -132,3 +132,24 @@ for (const size of [192, 512]) {
   writeFileSync(join(outDir, `icon-${size}.png`), png(size));
   console.log(`icons — wrote icon-${size}.png`);
 }
+
+// iOS home screen. Next serves app/apple-icon.png by file convention.
+writeFileSync(join(root, 'app', 'apple-icon.png'), png(180));
+console.log('icons — wrote app/apple-icon.png');
+
+/*
+ * The browser tab, as SVG so it stays crisp at 16px and at 64px. Built from
+ * the same shapes as the PNGs, so there is one definition of the mark.
+ */
+const hex = (colour) => '#' + colour.map((c) => c.toString(16).padStart(2, '0')).join('');
+const svg = [
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">',
+  `  <rect width="24" height="24" rx="5.4" fill="${hex(BRAND)}"/>`,
+  ...SHAPES.map(
+    (shape) =>
+      `  <rect x="${shape.x}" y="${shape.y}" width="${shape.w}" height="${shape.h}" rx="${shape.r}" fill="${hex(shape.colour)}"/>`
+  ),
+  '</svg>',
+].join('\n');
+writeFileSync(join(root, 'app', 'icon.svg'), `${svg}\n`);
+console.log('icons — wrote app/icon.svg');
