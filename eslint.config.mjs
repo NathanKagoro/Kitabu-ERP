@@ -5,7 +5,7 @@ const config = [
   ...nextVitals,
   ...nextTs,
   {
-    ignores: ['.next/**', '.next-e2e/**', 'components/icons/**', 'node_modules/**', 'public/sw.js', 'public/swe-worker-*.js', 'db/migrations/**', 'test-results/**', 'playwright-report/**'],
+    ignores: ['.next/**', '.next-e2e/**', '.netlify/**', 'components/icons/**', 'node_modules/**', 'public/sw.js', 'public/swe-worker-*.js', 'db/migrations/**', 'test-results/**', 'playwright-report/**'],
   },
   {
     rules: {

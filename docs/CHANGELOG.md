@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.1 — the app now really does open offline (2026-09-24)
+
+### Fixed: the PWA could not be reopened without a connection
+Deploying publicly exposed a defect the local tests had been blind to. Every page is server-rendered per request (the language is a cookie) and comes back `no-store`, so **no page HTML was ever cached**. Sales were safe in IndexedDB the whole time, but reopening the app with no signal had no shell to show them in — which is the core promise of the product.
+
+The tests had missed it because they only ever went offline *inside* an already-loaded page. Moving between screens in the app swaps router payloads rather than fetching pages, so nothing was cached on the way either.
+
+- The service worker now keeps the last good copy of each page and each navigation payload (`NetworkFirst`, so an online phone is never served a stale price list).
+- On install — once per deployed version, when a connection is known to exist — it warms the screens a trader actually opens: Mauzo, Manunuzi, Madeni, Hesabu, Zaidi, Bei and the offline page. About 50KB once per release, which is the price of the app opening at all without signal.
+- The end-to-end test now reloads the app and navigates between screens **while offline**, so this cannot regress silently.
+
+### Deployment
+- Public demo at **https://hesabu-tz.netlify.app** (see `docs/DEPLOY.md`). Netlify's "Powered by Netlify" badge was turned off: it sits bottom-right, directly over the app's bottom navigation on a 360px screen.
+
 ## 0.2.0 — buying in bulk, and what each product earns (2026-09-23)
 
 From the first round of feedback on 0.1.0.

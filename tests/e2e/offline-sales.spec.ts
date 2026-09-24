@@ -104,6 +104,17 @@ test('three offline sales sync exactly once when the connection returns', async 
     await page.getByRole('button', { name: 'Mauzo mengine' }).click();
   }
 
+  // Reopening the app with no signal must work too: a trader closes it, the
+  // bus comes, they open it again at the next stall. The sales are in
+  // IndexedDB either way, but without a cached shell there is no app to show
+  // them in.
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible({ timeout: 20_000 });
+  await page.goto('/hesabu');
+  await expect(page.getByText(/Hesabu ya leo/)).toBeVisible({ timeout: 20_000 });
+  await page.goto('/mauzo');
+  await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible({ timeout: 20_000 });
+
   // Nothing can have reached the server while offline.
   const offlineSalePosts = server.posts.slice(postsBefore).filter((p) => p.table === 'sales');
   expect(offlineSalePosts).toHaveLength(0);
