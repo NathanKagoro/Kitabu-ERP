@@ -1,5 +1,7 @@
 # Hesabu
 
+Live demo: **https://hesabu-tz.netlify.app** — sign in with any Tanzanian mobile number and the code 123456. The demo has no backend: your data stays in your own browser.
+
 A mobile-first business app for Tanzanian small businesses: a genge or duka on a cheap Android phone, up to a small formal business with staff, invoices and VAT. Swahili first, works offline.
 
 Product spec: [docs/MVP_SPEC.md](docs/MVP_SPEC.md) · Build plan: [docs/BUILD_PLAN.md](docs/BUILD_PLAN.md) · What's built: [docs/CHANGELOG.md](docs/CHANGELOG.md) · Deploying: [docs/DEPLOY.md](docs/DEPLOY.md)

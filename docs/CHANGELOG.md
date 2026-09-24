@@ -9,7 +9,13 @@ The tests had missed it because they only ever went offline *inside* an already-
 
 - The service worker now keeps the last good copy of each page and each navigation payload (`NetworkFirst`, so an online phone is never served a stale price list).
 - On install — once per deployed version, when a connection is known to exist — it warms the screens a trader actually opens: Mauzo, Manunuzi, Madeni, Hesabu, Zaidi, Bei and the offline page. About 50KB once per release, which is the price of the app opening at all without signal.
-- The end-to-end test now reloads the app and navigates between screens **while offline**, so this cannot regress silently.
+- The end-to-end test now reloads the app, navigates between screens **and completes a whole sale while offline**, so this cannot regress silently.
+
+### Fixed: the first sale made offline could not show its confirmation
+Found while verifying the fix above on the live site. The code-split screens — the payment, basket and success sheets, the keypad, the PIN lock — are fetched the first time they are needed, and the build's precache does not include them. "The first time" is exactly the market with no signal.
+
+- `components/warm-chunks.tsx` loads them 2.5 seconds after the app is interactive, at idle priority, so they are in the cache before they are needed and a trader never waits on them.
+- The budget test now measures first-load JS at the moment the grid is usable (196.0 KB) and reports the deferred total separately, rather than counting work that happens after the screen is ready.
 
 ### Deployment
 - Public demo at **https://hesabu-tz.netlify.app** (see `docs/DEPLOY.md`). Netlify's "Powered by Netlify" badge was turned off: it sits bottom-right, directly over the app's bottom navigation on a 360px screen.

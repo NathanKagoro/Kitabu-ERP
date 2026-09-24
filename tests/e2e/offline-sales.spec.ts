@@ -77,7 +77,7 @@ async function signUpAndOnboard(page: Page) {
   await page.waitForURL('**/mauzo');
 }
 
-test('three offline sales sync exactly once when the connection returns', async ({ page, context }) => {
+test('offline sales survive a reload and sync exactly once when the connection returns', async ({ page, context }) => {
   const server = await fakeSupabase(page);
   await signUpAndOnboard(page);
 
@@ -115,6 +115,14 @@ test('three offline sales sync exactly once when the connection returns', async 
   await page.goto('/mauzo');
   await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible({ timeout: 20_000 });
 
+  // A whole sale after the offline reload, sheets included. This is the case
+  // that broke in production: the code-split sheets had never been fetched, so
+  // the first sale made offline could not show its confirmation.
+  await page.getByRole('button', { name: /Nyanya/ }).first().click();
+  await page.getByRole('button', { name: 'Lipa taslimu' }).click();
+  await expect(page.getByText('Imehifadhiwa!')).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('button', { name: 'Mauzo mengine' }).click();
+
   // Nothing can have reached the server while offline.
   const offlineSalePosts = server.posts.slice(postsBefore).filter((p) => p.table === 'sales');
   expect(offlineSalePosts).toHaveLength(0);
@@ -128,16 +136,16 @@ test('three offline sales sync exactly once when the connection returns', async 
       () => ['sales', 'sale_lines', 'payments'].map((table) => server.rows.get(table)?.size ?? 0),
       { timeout: 20_000 }
     )
-    .toEqual([3, 3, 3]);
+    .toEqual([4, 4, 4]);
 
   // Exactly once: three sale rows posted in total, no duplicates.
   const salePosts = server.posts.filter((p) => p.table === 'sales').flatMap((p) => p.ids);
-  expect(salePosts).toHaveLength(3);
-  expect(new Set(salePosts).size).toBe(3);
+  expect(salePosts).toHaveLength(4);
+  expect(new Set(salePosts).size).toBe(4);
 
   const paymentIds = server.posts.filter((p) => p.table === 'payments').flatMap((p) => p.ids);
-  expect(new Set(paymentIds).size).toBe(3);
-  expect(paymentIds).toHaveLength(3);
+  expect(new Set(paymentIds).size).toBe(4);
+  expect(paymentIds).toHaveLength(4);
 
   // And the phone agrees it has nothing left to send.
   const pending = () => page.evaluate(
@@ -180,9 +188,11 @@ test('the sales screen fits the data budget on a cold load', async ({ page }) =>
 
   await page.goto('/mauzo', { waitUntil: 'load' });
   await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible();
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(300);
 
-  // What it takes to show the grid and take a sale.
+  // What it takes to show the grid and take a sale. Measured before the
+  // deferred work starts: the sync client and the code-split sheets are both
+  // fetched later, on idle, and a trader never waits on them.
   const sum = () => [...sizes.values()].reduce((a, b) => a + b, 0) / 1024;
   const firstLoadKb = sum();
   for (const [id, size] of [...sizes].sort((x, y) => y[1] - x[1])) {
@@ -190,9 +200,10 @@ test('the sales screen fits the data budget on a cold load', async ({ page }) =>
   }
   console.log(`sales screen first-load JS: ${firstLoadKb.toFixed(1)} KB`);
 
-  // The sync client arrives later, on idle, only when a backend is configured.
-  await page.waitForTimeout(5000);
-  console.log(`after background sync starts: ${sum().toFixed(1)} KB`);
+  // The deferred work: the sync client (only with a backend configured) and
+  // the sheets warmed so they are available offline.
+  await page.waitForTimeout(7000);
+  console.log(`after deferred warming: ${sum().toFixed(1)} KB`);
   test.info().annotations.push({ type: 'first-load-js-kb', description: firstLoadKb.toFixed(1) });
   expect(firstLoadKb).toBeLessThan(200);
   });
