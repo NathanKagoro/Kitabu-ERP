@@ -1,5 +1,6 @@
 'use client';
 
+import { productLabel } from '@/lib/products';
 import { useTranslations } from 'next-intl';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
@@ -63,7 +64,7 @@ function DailyPrices() {
             <li key={product.id} className="flex items-center gap-3 px-4 py-2.5">
               <span className="text-2xl" aria-hidden>{product.icon ?? '📦'}</span>
               <label htmlFor={`price-${product.id}`} className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">{product.name}</span>
+                <span className="block truncate font-semibold">{productLabel(product)}</span>
                 <span className="text-xs text-ink-faint">
                   /{product.unit === 'custom' ? product.unitLabel : tp(`unitsShort.${product.unit}`)} · {t('yesterday', { price: formatTZS(product.price) })}
                 </span>

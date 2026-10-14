@@ -1,6 +1,6 @@
 # CLAUDE.md — Project context for Claude Code
 
-> Working name: **Hesabu** (placeholder — rename freely). Replace `Hesabu` across the repo once a final name is chosen.
+> Name: **Kitabu** (formerly Hesabu; the pre-template code is on the `hesabu-original` branch). The phone database is still called `hesabu` on purpose: renaming it would strand records already on phones.
 
 ## What we are building
 A simple, mobile-first business app for Tanzanian small businesses. It must work equally well for:
@@ -8,6 +8,8 @@ A simple, mobile-first business app for Tanzanian small businesses. It must work
 - **Biashara mode** — a small formal business (wholesaler, hardware store, pharmacy, service company) with a few staff, suppliers, invoices and TRA obligations.
 
 Both modes are the **same app**. The business type chosen at onboarding decides which features are visible. Genge mode hides everything that isn't essential. Features are revealed progressively, never forced.
+
+**Kitabu is a template.** One build serves many shops; an operator creates each shop and customises it. Everything that differs per shop lives in `lib/shop-config.ts` (presets per shop type: cosmetics, clothes, hardware, duka, genge, pharmacy, wholesale, services, other) and `businesses.settings` (colour, address, payment methods + Lipa Namba, feature on/off overrides). Never hard-code a per-shop choice in a screen: read it from `useApp()` (`show(feature)`, `business`) or the shop-config helpers.
 
 Full product spec: `docs/MVP_SPEC.md`. Build order: `docs/BUILD_PLAN.md`. Read both before starting a phase.
 
@@ -20,8 +22,8 @@ Full product spec: `docs/MVP_SPEC.md`. Build order: `docs/BUILD_PLAN.md`. Read b
 6. **Plain language, not accounting language.** "Pesa iliyoingia", "Deni", "Faida ya leo" — not "Accounts receivable" or "Journal entry". Accounting rigor lives in the data model, not the UI.
 
 ## Tech stack
-- **Next.js (App Router) + TypeScript (strict)** — one codebase for UI and server logic.
-- **Supabase** — Postgres, Auth (phone OTP), Storage. Use Row Level Security for multi-tenancy.
+- **Next.js (App Router) + TypeScript (strict)**, built as a **static export** (`out/`). No server code in the app: no server actions, no cookies, no dynamic routes (records come in as `?id=`). Anything that builds a URL by hand goes through `withBase()` (GitHub Pages serves from a sub-folder).
+- **Supabase** — Postgres, Auth (phone number → password; no SMS), one Edge Function (`supabase/functions/accounts`) for anything that needs the service role. Use Row Level Security for multi-tenancy.
 - **Drizzle ORM** for schema and migrations (`/db/schema.ts`, `/db/migrations`).
 - **Tailwind CSS + shadcn/ui** for components.
 - **next-intl** for i18n (`/messages/sw.json`, `/messages/en.json`).
@@ -29,7 +31,7 @@ Full product spec: `docs/MVP_SPEC.md`. Build order: `docs/BUILD_PLAN.md`. Read b
 - **PWA** via `@serwist/next` (installable, offline shell).
 - **Zod** for validation shared between client and server.
 - **Vitest** for unit tests, **Playwright** for key end-to-end flows.
-- Hosting: **Vercel** (app) + **Supabase** (db). Keep everything deployable with zero custom servers.
+- Hosting: **GitHub Pages** (static files, `.github/workflows/pages.yml`) + **Supabase**. Keep everything deployable with zero custom servers.
 
 Do not add new major dependencies without noting why in the PR/commit message.
 
@@ -39,9 +41,9 @@ Do not add new major dependencies without noting why in the PR/commit message.
 - Every tenant-owned table has `business_id uuid not null` and an RLS policy restricting access to members of that business.
 - Every record created offline has a client-generated `id` (UUID v7) so sync is idempotent.
 - Soft delete with `deleted_at`; never hard-delete financial records.
-- Server mutations live in `/server/actions/*` as typed server actions; validate input with Zod.
+- Writes go through `lib/local/actions.ts` (local first, synced by the outbox). Privileged operations (creating logins, issuing setup codes, pausing a shop) live in the `accounts` Edge Function; keep its decisions in `rules.ts` so they are unit-tested, and keep `supabase/functions/_shared/login.ts` identical to `lib/auth/login.ts` (a test checks).
 - Feature folders: `/app/(app)/[feature]`, `/components/[feature]`, `/lib/[feature]`.
-- Keep components small; prefer server components, client components only where interaction needs them.
+- Keep components small. Screens are client components (the data is in the phone's IndexedDB).
 - Write a unit test for every money or stock calculation.
 
 ## Definition of done (every phase)

@@ -8,6 +8,7 @@
  */
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { createGzip } from 'node:zlib';
 import { extname, join, normalize, resolve } from 'node:path';
 
 const port = Number(process.argv[2] ?? 3217);
@@ -50,11 +51,17 @@ createServer((req, res) => {
   const file = fileFor(url.pathname);
   const status = file ? 200 : 404;
   const served = file ?? join(root, '404.html');
+  const type = TYPES[extname(served)] ?? 'application/octet-stream';
+  // Compressed like every real static host does, so size budgets measure
+  // what a phone actually downloads.
+  const gzip = /gzip/.test(String(req.headers['accept-encoding'] ?? '')) && /text|javascript|json|svg|manifest/.test(type);
   res.writeHead(status, {
-    'Content-Type': TYPES[extname(served)] ?? 'application/octet-stream',
+    'Content-Type': type,
     'Cache-Control': served.endsWith('sw.js') ? 'no-cache' : 'public, max-age=0',
+    ...(gzip ? { 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding' } : {}),
   });
-  createReadStream(served).pipe(res);
+  const stream = createReadStream(served);
+  (gzip ? stream.pipe(createGzip()) : stream).pipe(res);
 }).listen(port, () => {
   console.log(`serving ${root} at http://localhost:${port}${base}/`);
 });

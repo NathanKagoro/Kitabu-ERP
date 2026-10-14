@@ -253,7 +253,50 @@
     "packNamePlaceholder": "Mf. tenga",
     "packUnitsLabel": "Kina vipande vingapi?",
     "addPack": "Ongeza kipimo",
-    "removePack": "Ondoa kipimo"
+    "removePack": "Ondoa kipimo",
+    "count": "{count, plural, one {bidhaa 1} other {bidhaa #}}",
+    "search": "Tafuta jina, rangi, saizi, kundi au barcode",
+    "noCategory": "Bila kundi",
+    "noMatch": "Hakuna bidhaa inayolingana",
+    "variantLabels": {
+      "shade": "Rangi / shade",
+      "size": "Saizi",
+      "sizeColour": "Saizi na rangi",
+      "spec": "Aina / kipimo"
+    },
+    "variantPlaceholders": {
+      "shade": "Mf. Nude 03, 400ml",
+      "size": "Mf. 42, XL",
+      "sizeColour": "Mf. M · Bluu",
+      "spec": "Mf. 20L, 2.5mm, 1/2 inchi"
+    },
+    "anotherVariant": {
+      "shade": "Rangi nyingine",
+      "size": "Saizi nyingine",
+      "sizeColour": "Saizi/rangi nyingine",
+      "spec": "Aina nyingine"
+    },
+    "bulk": {
+      "open": "Ingiza bidhaa nyingi kwa pamoja",
+      "title": "Ingiza bidhaa nyingi",
+      "firstTitle": "Ingiza bidhaa za duka lako",
+      "subtitle": "Hesabu rafu moja, andika ulichokiona. Idadi inakuwa stoo ya kuanzia.",
+      "tabType": "Andika",
+      "tabPaste": "Bandika orodha",
+      "costShort": "Gharama",
+      "qtyShort": "Idadi",
+      "addRow": "Bidhaa nyingine",
+      "skip": "Nitaingiza baadaye",
+      "saveAll": "Hifadhi zote ({count}) · stoo TSh {total}",
+      "saved": "{count, plural, one {Bidhaa 1 imeongezwa} other {Bidhaa # zimeongezwa}}",
+      "missingPrice": "{count, plural, one {Bidhaa 1 haina bei bado} other {Bidhaa # hazina bei bado}}",
+      "pasteHelp": "Nakili orodha kutoka Excel, Google Sheets au WhatsApp. Kila bidhaa mstari wake, kwa mpangilio huu (unaweza kuacha za mwisho):",
+      "pasteExample": "jina, rangi/saizi, kundi, bei, gharama, idadi\nNivea Lotion, 400ml, Losheni, 12500, 9000, 6\nLipstick, Red 01, Make-up, 8000, 5500, 12",
+      "pastePlaceholder": "Bandika hapa...",
+      "pasteRead_button": "Soma orodha",
+      "pasteRead": "{count, plural, one {Bidhaa 1 imesomwa. Hakiki kisha hifadhi.} other {Bidhaa # zimesomwa. Hakiki kisha hifadhi.}}",
+      "pasteNothing": "Hakuna bidhaa iliyopatikana kwenye ulichobandika."
+    }
   },
   "prices": {
     "title": "Bei za leo",

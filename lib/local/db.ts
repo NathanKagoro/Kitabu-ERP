@@ -58,6 +58,8 @@ export class HesabuDB extends Dexie {
   outbox!: EntityTable<OutboxEntry, 'seq'>;
   meta!: EntityTable<MetaRow, 'key'>;
 
+  // Still 'hesabu': renaming the IndexedDB database would strand every record
+  // already on a phone. Nobody sees this name.
   constructor(name = 'hesabu') {
     super(name);
     this.version(1).stores({

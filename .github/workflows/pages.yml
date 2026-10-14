@@ -1,0 +1,73 @@
+# Builds Kitabu as plain files and publishes them on GitHub Pages.
+#
+# Repository variables (Settings > Secrets and variables > Actions > Variables):
+#   SUPABASE_URL       your project's URL           (unset: demo mode, data stays on the phone)
+#   SUPABASE_ANON_KEY  the project's anon/public key (safe to publish; RLS protects the data)
+#   SUPPORT_WHATSAPP   your number for the "contact us" buttons, e.g. 0712345678
+#
+# The service-role key is never needed here and must never be added.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - id: pages
+        uses: actions/configure-pages@v5
+
+      - run: npm ci
+
+      - name: Check
+        run: |
+          npm run typecheck
+          npm run lint
+          npm run i18n:check
+          npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          NEXT_PUBLIC_SITE_URL: ${{ steps.pages.outputs.base_url }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPPORT_WHATSAPP: ${{ vars.SUPPORT_WHATSAPP }}
+
+      # Without this, GitHub Pages hides the _next/ folder (Jekyll skips "_" paths).
+      - run: touch out/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

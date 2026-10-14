@@ -23,6 +23,8 @@ import { cartQtyByProduct, cartReducer, EMPTY_CART, lineFor } from '@/lib/pos/ca
 import { uuidv7 } from '@/lib/uuid';
 import { allowsDecimals, formatQty } from '@/lib/units';
 import type { Product } from '@/lib/types';
+import { categoriesOf, matchesQuery } from '@/lib/products';
+import { paymentMethodsOf } from '@/lib/shop-config';
 
 const SEARCH_THRESHOLD = 12;
 
@@ -67,10 +69,18 @@ export default function SalesPage() {
   // A tile with no price cannot be sold, so say so before it is tapped.
   const missingPrices = (products ?? []).filter((p) => p.price <= 0).length;
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q ? (products ?? []).filter((p) => p.name.toLowerCase().includes(q)) : products ?? [];
-  }, [products, query]);
+  // Category chips once a shop has more than one category (cosmetics, clothes,
+  // hardware); search covers name, shade/size, category and barcode.
+  const [category, setCategory] = useState<string | null>(null);
+  const categories = useMemo(() => categoriesOf(products ?? []), [products]);
+  const visible = useMemo(
+    () =>
+      (products ?? []).filter(
+        (p) => matchesQuery(p, query) && (!category || p.category?.trim().toLowerCase() === category.toLowerCase())
+      ),
+    [products, query, category]
+  );
+  const takesCash = paymentMethodsOf(business).includes('cash');
 
   const addProduct = (product: Product, openEditor = false) => {
     const lineId = lineFor(cart, product) ?? uuidv7();
@@ -133,6 +143,7 @@ export default function SalesPage() {
           <SyncIndicator />
           <Link
             href="/mauzo/historia"
+            prefetch={false}
             aria-label={t('todaySales')}
             className="flex h-12 w-12 items-center justify-center rounded-full text-ink-soft active:bg-line/40"
           >
@@ -166,9 +177,28 @@ export default function SalesPage() {
         )}
       </header>
 
+      {categories.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto px-3 pt-3 pb-0.5" role="group" aria-label={tp('categoryLabel')}>
+          {[null, ...categories].map((name) => (
+            <button
+              key={name ?? '__all'}
+              onClick={() => setCategory(name)}
+              aria-pressed={category === name}
+              className={cn(
+                'h-10 shrink-0 rounded-full border px-3.5 text-sm font-semibold whitespace-nowrap',
+                category === name ? 'border-brand bg-brand text-white' : 'border-line-strong bg-surface text-ink-soft'
+              )}
+            >
+              {name ?? tc('all')}
+            </button>
+          ))}
+        </div>
+      )}
+
       {missingPrices > 0 && (
         <Link
           href="/bei"
+          prefetch={false}
           className="mx-3 mt-3 flex items-center gap-2 rounded-[10px] border border-debt/40 bg-debt-tint px-3 py-2.5 text-sm font-semibold text-debt"
         >
           <Tag size={18} className="shrink-0" />
@@ -189,7 +219,7 @@ export default function SalesPage() {
           }
         />
       ) : (
-        <div className={cn('grid grid-cols-3 gap-2 p-3', itemCount > 0 && 'pb-36')}>
+        <div className={cn('grid grid-cols-3 gap-2 p-3', itemCount > 0 && 'pb-48')}>
           {visible.map((product) => {
             const qty = inCart.get(product.id) ?? 0;
             const onHand = stock?.get(product.id) ?? 0;
@@ -219,6 +249,9 @@ export default function SalesPage() {
                   {product.icon ?? '📦'}
                 </span>
                 <span className="line-clamp-2 text-[15px] leading-tight font-semibold">{product.name}</span>
+                {product.variant ? (
+                  <span className="line-clamp-1 rounded-full bg-paper px-2 text-xs font-semibold text-ink-soft">{product.variant}</span>
+                ) : null}
                 <span className="tnum text-sm font-medium text-ink-soft">
                   {product.price > 0 ? <Money value={product.price} /> : <span className="text-debt">{tc('price')}?</span>}
                   <span className="text-ink-faint"> /{product.unit === 'custom' ? product.unitLabel ?? tp('unitsShort.custom') : tp(`unitsShort.${product.unit}`)}</span>
@@ -236,20 +269,26 @@ export default function SalesPage() {
 
       {itemCount > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom,0px))] z-30 border-t border-line bg-surface">
-          <div className="mx-auto flex max-w-lg items-center gap-2 p-2.5">
+          {/* Total on its own line: five- and six-digit totals (cosmetics,
+              hardware) never get squeezed by the pay buttons. */}
+          <div className="mx-auto max-w-lg space-y-2 p-2.5">
             <button
               onClick={() => setCartOpen(true)}
-              className="flex h-14 min-w-0 flex-1 flex-col items-start justify-center rounded-[10px] border border-line-strong px-3 text-left"
+              className="flex h-11 w-full items-center justify-between rounded-[10px] border border-line-strong px-3 text-left active:bg-paper"
             >
-              <span className="text-xs font-semibold text-ink-soft">{t('itemCount', { count: itemCount })}</span>
-              <Money value={total} className="text-xl leading-tight font-bold" />
+              <span className="text-sm font-semibold text-ink-soft">{t('itemCount', { count: itemCount })}</span>
+              <Money value={total} symbol className="text-xl leading-tight font-bold" />
             </button>
-            <Button variant="secondary" size="lg" className="px-3" onClick={() => setPaying(true)}>
-              {t('otherPayment')}
-            </Button>
-            <Button size="lg" className="px-4" disabled={busy || total <= 0} onClick={payCash}>
-              {t('payCash')}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" size="lg" className="flex-1 px-3" onClick={() => setPaying(true)}>
+                {t('otherPayment')}
+              </Button>
+              {takesCash ? (
+                <Button size="lg" className="flex-1 px-3" disabled={busy || total <= 0} onClick={payCash}>
+                  {t('payCash')}
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

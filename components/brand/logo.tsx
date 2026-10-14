@@ -10,7 +10,7 @@ export function Logo({ size = 56, className }: { size?: number; className?: stri
       height={size}
       viewBox="0 0 24 24"
       role="img"
-      aria-label="Hesabu"
+      aria-label="Kitabu"
       className={className}
     >
       <rect width="24" height="24" rx="5.4" fill="var(--color-brand)" />

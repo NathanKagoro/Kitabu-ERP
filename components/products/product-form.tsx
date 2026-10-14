@@ -11,6 +11,9 @@ import { cn } from '@/lib/cn';
 import { parseTZS } from '@/lib/money';
 import { PRODUCT_ICONS } from '@/lib/onboarding/starter-products';
 import { PRODUCT_UNITS } from '@/lib/units';
+import { useProducts } from '@/lib/local/queries';
+import { categoriesOf } from '@/lib/products';
+import { presetOf, type ProductField } from '@/lib/shop-config';
 import type { Product, ProductPack, ProductUnit, VatType } from '@/lib/types';
 import { PackEditor, type PackDraft } from './pack-editor';
 
@@ -27,31 +30,45 @@ export interface ProductDraft {
   sku: string | null;
   barcode: string | null;
   category: string | null;
+  variant: string | null;
   vatType: VatType;
 }
 
-export function draftFrom(product?: Product | null, packs: readonly ProductPack[] = []): ProductDraft {
+/**
+ * A product's editable fields. With no product, `defaults` sets what a new
+ * product in this kind of shop starts with (unit, stock tracking); "another
+ * shade of this" passes the sibling product with the variant cleared.
+ */
+export function draftFrom(
+  product?: Partial<Product> | null,
+  packs: readonly ProductPack[] = [],
+  defaults: Partial<Pick<ProductDraft, 'unit' | 'trackStock'>> = {}
+): ProductDraft {
   return {
     packs: packs
       .filter((pack) => pack.active && !pack.deletedAt)
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map((pack) => ({ id: pack.id, label: pack.label, units: String(pack.units) })),
     name: product?.name ?? '',
-    unit: product?.unit ?? 'kipande',
+    unit: product?.unit ?? defaults.unit ?? 'kipande',
     unitLabel: product?.unitLabel ?? null,
     price: product?.price ?? 0,
     cost: product?.cost ?? null,
-    trackStock: product?.trackStock ?? false,
+    trackStock: product?.trackStock ?? defaults.trackStock ?? false,
     lowStockLevel: product?.lowStockLevel ?? null,
     icon: product?.icon ?? '📦',
     sku: product?.sku ?? null,
     barcode: product?.barcode ?? null,
     category: product?.category ?? null,
+    variant: product?.variant ?? null,
     vatType: product?.vatType ?? 'standard',
   };
 }
 
-/** Fields appear by mode: a genge never sees SKU, barcode, category or VAT. */
+/**
+ * Fields appear by shop: a genge never sees a category or barcode; a cosmetics
+ * shop is asked for the shade, a clothes shop for size and colour.
+ */
 export function ProductForm({
   initial,
   onSubmit,
@@ -63,7 +80,11 @@ export function ProductForm({
 }) {
   const t = useTranslations('products');
   const tc = useTranslations('common');
-  const { show } = useApp();
+  const { show, business } = useApp();
+  const preset = presetOf(business);
+  const asks = (field: ProductField) => preset.productFields.includes(field);
+  const shopProducts = useProducts(business?.id ?? null);
+  const categories = [...new Set([...preset.categories, ...categoriesOf(shopProducts ?? [])])];
   const [draft, setDraft] = useState(initial);
   const [price, setPrice] = useState(initial.price ? String(initial.price) : '');
   const [cost, setCost] = useState(initial.cost ? String(initial.cost) : '');
@@ -78,6 +99,8 @@ export function ProductForm({
     void onSubmit({
       ...draft,
       name: draft.name.trim(),
+      variant: draft.variant?.trim() || null,
+      category: draft.category?.trim() || null,
       price: parseTZS(price) ?? 0,
       cost: parseTZS(cost),
       lowStockLevel: low.trim() ? Number(low) : null,
@@ -90,6 +113,39 @@ export function ProductForm({
       <Field label={t('nameLabel')} error={error}>
         {(id) => <TextInput id={id} value={draft.name} placeholder={t('namePlaceholder')} onChange={(e) => set('name', e.target.value)} />}
       </Field>
+
+      {asks('variant') && preset.variantLabel && (
+        <Field label={t(`variantLabels.${preset.variantLabel}`)} hint={tc('optional')}>
+          {(id) => (
+            <TextInput
+              id={id}
+              value={draft.variant ?? ''}
+              placeholder={t(`variantPlaceholders.${preset.variantLabel}`)}
+              onChange={(e) => set('variant', e.target.value || null)}
+            />
+          )}
+        </Field>
+      )}
+
+      {(asks('category') || show('productCodes')) && (
+        <Field label={t('categoryLabel')} hint={tc('optional')}>
+          {(id) => (
+            <>
+              <TextInput
+                id={id}
+                list={`${id}-list`}
+                value={draft.category ?? ''}
+                onChange={(e) => set('category', e.target.value || null)}
+              />
+              <datalist id={`${id}-list`}>
+                {categories.map((name) => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </>
+          )}
+        </Field>
+      )}
 
       <div className="space-y-1.5">
         <p className="text-sm font-semibold text-ink-soft">{t('iconLabel')}</p>
@@ -151,17 +207,16 @@ export function ProductForm({
         </Field>
       )}
 
-      {show('productCodes') && (
+      {(show('productCodes') || asks('barcode')) && (
         <div className="grid grid-cols-2 gap-3">
-          <Field label={t('skuLabel')}>
-            {(id) => <TextInput id={id} value={draft.sku ?? ''} onChange={(e) => set('sku', e.target.value || null)} />}
-          </Field>
-          <Field label={t('barcodeLabel')}>
-            {(id) => <TextInput id={id} inputMode="numeric" value={draft.barcode ?? ''} onChange={(e) => set('barcode', e.target.value || null)} />}
-          </Field>
-          <div className="col-span-2">
-            <Field label={t('categoryLabel')}>
-              {(id) => <TextInput id={id} value={draft.category ?? ''} onChange={(e) => set('category', e.target.value || null)} />}
+          {show('productCodes') && (
+            <Field label={t('skuLabel')}>
+              {(id) => <TextInput id={id} value={draft.sku ?? ''} onChange={(e) => set('sku', e.target.value || null)} />}
+            </Field>
+          )}
+          <div className={show('productCodes') ? '' : 'col-span-2'}>
+            <Field label={t('barcodeLabel')} hint={tc('optional')}>
+              {(id) => <TextInput id={id} inputMode="numeric" value={draft.barcode ?? ''} onChange={(e) => set('barcode', e.target.value || null)} />}
             </Field>
           </div>
         </div>

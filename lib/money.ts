@@ -1,5 +1,5 @@
 /**
- * Every amount in Hesabu is an integer number of Tanzanian shillings. There is
+ * Every amount in Kitabu is an integer number of Tanzanian shillings. There is
  * no sub-shilling unit in daily use -- nobody at a genge has ever handled a cent
  * -- so integers are the natural representation, not a workaround.
  */

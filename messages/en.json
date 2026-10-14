@@ -253,7 +253,50 @@
     "packNamePlaceholder": "e.g. crate",
     "packUnitsLabel": "How many inside?",
     "addPack": "Add a size",
-    "removePack": "Remove size"
+    "removePack": "Remove size",
+    "count": "{count, plural, one {1 product} other {# products}}",
+    "search": "Search name, shade, size, category or barcode",
+    "noCategory": "No category",
+    "noMatch": "No product matches",
+    "variantLabels": {
+      "shade": "Shade",
+      "size": "Size",
+      "sizeColour": "Size and colour",
+      "spec": "Type / size"
+    },
+    "variantPlaceholders": {
+      "shade": "e.g. Nude 03, 400ml",
+      "size": "e.g. 42, XL",
+      "sizeColour": "e.g. M · Blue",
+      "spec": "e.g. 20L, 2.5mm, 1/2 inch"
+    },
+    "anotherVariant": {
+      "shade": "Another shade",
+      "size": "Another size",
+      "sizeColour": "Another size/colour",
+      "spec": "Another type"
+    },
+    "bulk": {
+      "open": "Add many products at once",
+      "title": "Add many products",
+      "firstTitle": "Add your shop's products",
+      "subtitle": "Count a shelf, type what you see. The quantity becomes the opening stock.",
+      "tabType": "Type",
+      "tabPaste": "Paste a list",
+      "costShort": "Cost",
+      "qtyShort": "Qty",
+      "addRow": "Another product",
+      "skip": "I'll add them later",
+      "saveAll": "Save all ({count}) · stock TSh {total}",
+      "saved": "{count, plural, one {1 product added} other {# products added}}",
+      "missingPrice": "{count, plural, one {1 product has no price yet} other {# products have no price yet}}",
+      "pasteHelp": "Copy a list from Excel, Google Sheets or WhatsApp. One product per line, in this order (later columns can be left off):",
+      "pasteExample": "name, shade/size, category, price, cost, quantity\nNivea Lotion, 400ml, Lotions, 12500, 9000, 6\nLipstick, Red 01, Make-up, 8000, 5500, 12",
+      "pastePlaceholder": "Paste here...",
+      "pasteRead_button": "Read the list",
+      "pasteRead": "{count, plural, one {1 product read. Check, then save.} other {# products read. Check, then save.}}",
+      "pasteNothing": "No products found in what you pasted."
+    }
   },
   "prices": {
     "title": "Today's prices",

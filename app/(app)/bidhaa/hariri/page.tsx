@@ -15,6 +15,10 @@ import { stockOnHand } from '@/lib/calc/stock';
 import { adjustStock, archiveProduct, saveProduct, saveProductPacks } from '@/lib/local/actions';
 import { db } from '@/lib/local/db';
 import { formatQty } from '@/lib/units';
+import Link from 'next/link';
+import { Plus } from '@/components/icons';
+import { productLabel } from '@/lib/products';
+import { presetOf } from '@/lib/shop-config';
 
 /** Static hosting has no per-record pages, so the record comes in as ?id=. */
 export default function EditProductPageRoute() {
@@ -32,7 +36,7 @@ function EditProductPage() {
   const router = useRouter();
   const toast = useToast();
   const te = useTranslations('errors');
-  const { businessId, userId, show, can } = useApp();
+  const { businessId, userId, show, can, business } = useApp();
   const [counted, setCounted] = useState('');
 
   const data = useLiveQuery(async () => {
@@ -49,10 +53,11 @@ function EditProductPage() {
   // Mirrors RLS: an edit the server would refuse must not look saved here.
   if (!can('manageProducts')) return <><PageHeader title={data.product.name} /><EmptyState title={te('noAccess')} /></>;
   const { product, onHand } = data;
+  const variantLabel = presetOf(business).productFields.includes('variant') ? presetOf(business).variantLabel : null;
 
   return (
     <>
-      <PageHeader title={product.name} />
+      <PageHeader title={productLabel(product)} />
       <ProductForm
         key={product.id}
         initial={draftFrom(product, data.packs)}
@@ -92,6 +97,18 @@ function EditProductPage() {
             {tc('save')}
           </Button>
         </section>
+      )}
+
+      {variantLabel && (
+        <div className="px-4 pb-2">
+          <Link
+            href={`/bidhaa/mpya?kutoka=${product.id}`}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface font-semibold text-brand active:bg-paper"
+          >
+            <Plus size={20} />
+            {t(`anotherVariant.${variantLabel}`)}
+          </Link>
+        </div>
       )}
 
       <div className="px-4 pb-6">

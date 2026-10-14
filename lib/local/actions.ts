@@ -291,6 +291,87 @@ export async function saveProductPacks(
   if (rows.length > 0) await persist('productPacks', rows);
 }
 
+/** One product from the setup-day bulk entry. Money in integer TZS. */
+export interface NewProductRow {
+  name: string;
+  variant?: string | null;
+  category?: string | null;
+  price: number;
+  cost?: number | null;
+  /** Counted on the shelf today; becomes the opening stock. */
+  qty?: number | null;
+}
+
+/**
+ * Setup day: many products at once, each with the stock counted on the shelf.
+ * One transaction, so a half-saved shelf never syncs. Opening stock is an
+ * 'adjust' movement carrying the cost, so profit is right from the first sale.
+ */
+export async function addProductsInBulk(
+  input: Actor & {
+    rows: readonly NewProductRow[];
+    unit: Product['unit'];
+    trackStock: boolean;
+    icon?: string | null;
+  }
+): Promise<number> {
+  const rows = input.rows.filter((row) => row.name.trim());
+  if (rows.length === 0) return 0;
+  const at = nowIso();
+  const start = await db().products.where('businessId').equals(input.businessId).count();
+
+  const products: Product[] = [];
+  const movements: StockMovement[] = [];
+  rows.forEach((row, index) => {
+    const id = uuidv7();
+    const cost = row.cost != null && row.cost > 0 ? Math.round(row.cost) : null;
+    products.push({
+      id,
+      businessId: input.businessId,
+      name: row.name.trim(),
+      variant: row.variant?.trim() || null,
+      category: row.category?.trim() || null,
+      unit: input.unit,
+      unitLabel: null,
+      price: Math.max(0, Math.round(row.price)),
+      cost,
+      trackStock: input.trackStock,
+      lowStockLevel: null,
+      icon: input.icon ?? '📦',
+      photoUrl: null,
+      sku: null,
+      barcode: null,
+      vatType: 'standard',
+      sortOrder: start + index,
+      active: true,
+      createdAt: at,
+      updatedAt: at,
+      deletedAt: null,
+    });
+    if (input.trackStock && row.qty != null && row.qty > 0) {
+      movements.push({
+        id: uuidv7(),
+        businessId: input.businessId,
+        productId: id,
+        qty: Math.round(row.qty * 1000) / 1000,
+        type: 'adjust',
+        reason: null,
+        refId: null,
+        unitCost: cost,
+        note: 'opening',
+        createdAt: at,
+        createdBy: input.userId ?? null,
+      });
+    }
+  });
+
+  await persistAll([
+    { table: 'products', rows: products },
+    { table: 'stockMovements', rows: movements },
+  ]);
+  return products.length;
+}
+
 export async function archiveProduct(product: Product): Promise<void> {
   await persist('products', { ...product, active: false, updatedAt: nowIso() });
 }

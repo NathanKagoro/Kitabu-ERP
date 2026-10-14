@@ -1,4 +1,5 @@
 import type { CartLine } from '../calc/sale';
+import { productLabel } from '../products';
 import type { Product } from '../types';
 import { uuidv7 } from '../uuid';
 
@@ -45,7 +46,7 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
           {
             id: action.lineId ?? uuidv7(),
             productId: action.product.id,
-            description: action.product.name,
+            description: productLabel(action.product),
             qty,
             unitPrice: action.product.price,
             unitCost: action.product.cost ?? null,

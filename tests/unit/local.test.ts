@@ -318,3 +318,40 @@ describe('buying in bulk', () => {
     expect(rows[0]).toMatchObject({ id: first!.id, label: 'tenga kubwa', units: 45 });
   });
 });
+
+describe('addProductsInBulk (setup day)', () => {
+  it('adds every shade with its opening stock, in one go', async () => {
+    const before = await db().products.where('businessId').equals(businessId).count();
+    const added = await actions.addProductsInBulk({
+      businessId,
+      unit: 'kipande',
+      trackStock: true,
+      rows: [
+        { name: 'Lipstick', variant: 'Red 01', category: 'Make-up', price: 8000, cost: 5500, qty: 12 },
+        { name: 'Lipstick', variant: 'Nude 03', category: 'Make-up', price: 8000, cost: 5500, qty: 0 },
+        { name: '   ', price: 100 },
+      ],
+    });
+    expect(added).toBe(2);
+
+    const all = await db().products.where('businessId').equals(businessId).toArray();
+    expect(all).toHaveLength(before + 2);
+    const red = all.find((p) => p.variant === 'Red 01')!;
+    expect(red).toMatchObject({ name: 'Lipstick', category: 'Make-up', price: 8000, cost: 5500, trackStock: true });
+
+    const movements = await db().stockMovements.where('productId').equals(red.id).toArray();
+    expect(stockOnHand(movements)).toBe(12);
+    expect(movements[0]).toMatchObject({ type: 'adjust', unitCost: 5500 });
+    // A shade counted at zero gets no movement at all.
+    const nude = all.find((p) => p.variant === 'Nude 03')!;
+    expect(await db().stockMovements.where('productId').equals(nude.id).count()).toBe(0);
+  });
+
+  it('reaches the server like any other write', async () => {
+    await actions.addProductsInBulk({ businessId, unit: 'kipande', trackStock: true, rows: [{ name: 'Viatu', variant: '40', price: 25000, qty: 2 }] });
+    await sync();
+    const pushed = [...(server.tables.get('products')?.values() ?? [])];
+    expect(pushed.some((row) => row.name === 'Viatu' && row.variant === '40')).toBe(true);
+    expect(server.tables.get('stock_movements')?.size).toBe(1);
+  });
+});

@@ -33,6 +33,10 @@ export function BottomNav() {
             <li key={href} className="flex-1">
               <Link
                 href={href}
+                // No prefetch: on a static host it pulls every tab's code into
+                // the first load. The service worker already holds it, so a
+                // tap is instant anyway, online or off.
+                prefetch={false}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex h-[68px] flex-col items-center justify-center gap-0.5 px-0.5',

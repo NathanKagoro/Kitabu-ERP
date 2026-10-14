@@ -1,5 +1,6 @@
 'use client';
 
+import { productLabel } from '@/lib/products';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Plus, Trash2, TriangleAlert } from '@/components/icons';
 import { useTranslations } from 'next-intl';
@@ -129,7 +130,7 @@ export default function PurchasesPage() {
                 <option value="">—</option>
                 {products?.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.icon} {p.name}
+                    {p.icon} {productLabel(p)}
                   </option>
                 ))}
               </Select>

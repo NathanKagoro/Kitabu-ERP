@@ -16,18 +16,58 @@ const FAKE_SUPABASE = 'http://127.0.0.1:54329';
 interface ServerState {
   posts: { table: string; ids: string[] }[];
   rows: Map<string, Map<string, unknown>>;
+  passwordSet: boolean;
+}
+
+const USER_ID = '00000000-0000-7000-8000-0000000000aa';
+const SHOP_ID = '00000000-0000-7000-8000-0000000000b1';
+
+/** An unsigned token: supabase-js reads its claims, nothing here checks a signature. */
+function fakeJwt(): string {
+  const part = (o: object) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  return `${part({ alg: 'HS256', typ: 'JWT' })}.${part({ sub: USER_ID, role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.sig`;
+}
+
+/**
+ * The shop as the operator created it (the accounts function): a cosmetics
+ * shop, an owner whose login still carries the setup code.
+ */
+function seedShop(state: ServerState) {
+  const at = new Date().toISOString();
+  state.rows.set('businesses', new Map([[SHOP_ID, {
+    id: SHOP_ID, name: 'Neema Cosmetics', type: 'cosmetics', mode: 'duka', phone: '+255712345678', locale: 'sw',
+    settings: { vatRate: 18, brandColor: '#b0225f' }, status: 'active', tin: null, vrn: null, logo_url: null,
+    created_at: at, updated_at: at, deleted_at: null, synced_at: at,
+  }]]));
+  state.rows.set('members', new Map([['m-owner', {
+    id: '00000000-0000-7000-8000-0000000000c1', business_id: SHOP_ID, user_id: USER_ID, name: 'Neema', phone: '+255712345678',
+    role: 'owner', pin_hash: null, active: true, created_at: at, updated_at: at, deleted_at: null, synced_at: at,
+  }]]));
 }
 
 async function fakeSupabase(page: Page): Promise<ServerState> {
-  const state: ServerState = { posts: [], rows: new Map() };
+  const state: ServerState = { posts: [], rows: new Map(), passwordSet: false };
+  seedShop(state);
 
   await page.route(`${FAKE_SUPABASE}/**`, async (route) => {
     const request = route.request();
     const url = new URL(request.url());
+    const user = () => ({
+      id: USER_ID, aud: 'authenticated', role: 'authenticated', email: '255712345678@phone.kitabu.app',
+      app_metadata: {}, user_metadata: { must_set_password: !state.passwordSet }, created_at: new Date().toISOString(),
+    });
 
-    // Auth is rejected, so the app falls back to the dev OTP identity.
+    // Sign-in with phone + setup code, then "choose your password".
+    if (url.pathname === '/auth/v1/token') {
+      const body = { access_token: fakeJwt(), token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, refresh_token: 'r', user: user() };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    }
+    if (url.pathname === '/auth/v1/user') {
+      if (request.method() === 'PUT') state.passwordSet = true;
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(user()) });
+    }
     if (url.pathname.startsWith('/auth/')) {
-      return route.fulfill({ status: 400, contentType: 'application/json', body: '{"error":"no auth in test"}' });
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
     }
 
     if (url.pathname.startsWith('/rest/v1/rpc/')) {
@@ -45,41 +85,52 @@ async function fakeSupabase(page: Page): Promise<ServerState> {
       return route.fulfill({ status: 201, contentType: 'application/json', body: '[]' });
     }
 
-    return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    // Reads: the seeded shop and membership (sign-in and the first pull).
+    const seeded = table === 'members' || table === 'businesses' ? [...(state.rows.get(table)?.values() ?? [])] : [];
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(seeded) });
   });
 
   return state;
 }
 
-async function signUpAndOnboard(page: Page) {
+/**
+ * The owner's first day: phone + setup code, choose a password, set a PIN,
+ * then setup-day bulk entry (two shades of one lipstick, counted on the
+ * shelf), and the till.
+ */
+async function firstSignIn(page: Page) {
   await page.goto('/ingia');
   await page.getByLabel('Namba ya simu').fill('0712 345 678');
-  await page.getByRole('button', { name: 'Nitumie namba' }).click();
-  await page.getByLabel('Namba ya uthibitisho').fill('123456');
-  await page.getByRole('button', { name: 'Thibitisha' }).click();
+  await page.getByLabel(/^Neno siri/).fill('ktab-2468');
+  await page.getByRole('button', { name: 'Ingia', exact: true }).click();
 
-  await page.waitForURL('**/karibu');
-  await page.getByLabel('Biashara yako inaitwa nani?').fill('Genge la Majaribio');
-  await page.getByRole('button', { name: 'Endelea' }).click();
-  await page.getByRole('button', { name: /Genge \/ Kibanda/ }).click();
-  await page.getByRole('button', { name: 'Endelea' }).click();
-  await page.getByRole('button', { name: 'Maliza' }).click();
+  await page.waitForURL(/\/neno-siri\/?$/);
+  await page.getByLabel('Neno siri jipya').fill('neema2026');
+  await page.getByLabel('Rudia neno siri').fill('neema2026');
+  await page.getByRole('button', { name: 'Hifadhi na endelea' }).click();
 
-  await page.waitForURL('**/pin');
+  await page.waitForURL(/\/pin\/?$/);
   for (const round of [0, 1]) {
     void round;
     for (const digit of '1234') await page.getByRole('button', { name: digit, exact: true }).click();
   }
-  // Prices come before the till, so setting up ends here.
-  await page.waitForURL('**/bei**');
-  await page.getByLabel(/^Nyanya/).fill('1000');
-  await page.getByRole('button', { name: 'Hifadhi na anza kuuza' }).click();
-  await page.waitForURL('**/mauzo');
+
+  // A new shop with no products starts on bulk entry.
+  await page.waitForURL(/\/bidhaa\/ingiza\/?\?anza=1$/);
+  await page.getByLabel('Jina la bidhaa').fill('Lipstick');
+  await page.getByLabel('Rangi / shade').fill('Red 01');
+  await page.getByLabel('Bei ya kuuza').fill('8000');
+  await page.getByLabel('Idadi').fill('12');
+  await page.getByRole('button', { name: 'Rangi nyingine' }).click();
+  await page.getByLabel('Rangi / shade').nth(1).fill('Nude 03');
+  await page.getByLabel('Idadi').nth(1).fill('5');
+  await page.getByRole('button', { name: /Hifadhi zote \(2\)/ }).click();
+  await page.waitForURL(/\/mauzo\/?$/);
 }
 
 test('offline sales survive a reload and sync exactly once when the connection returns', async ({ page, context }) => {
   const server = await fakeSupabase(page);
-  await signUpAndOnboard(page);
+  await firstSignIn(page);
 
   // Installable offline: the service worker is registered and active.
   await expect
@@ -98,7 +149,7 @@ test('offline sales survive a reload and sync exactly once when the connection r
 
   for (let i = 0; i < 3; i++) {
     // Tap 1: the tile. Tap 2: pay cash. That is the whole sale.
-    await page.getByRole('button', { name: /Nyanya/ }).first().click();
+    await page.getByRole('button', { name: /Red 01/ }).first().click();
     await page.getByRole('button', { name: 'Lipa taslimu' }).click();
     await expect(page.getByText('Imehifadhiwa!')).toBeVisible();
     await page.getByRole('button', { name: 'Mauzo mengine' }).click();
@@ -109,16 +160,16 @@ test('offline sales survive a reload and sync exactly once when the connection r
   // IndexedDB either way, but without a cached shell there is no app to show
   // them in.
   await page.reload();
-  await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible({ timeout: 20_000 });
-  await page.goto('/hesabu');
+  await expect(page.getByRole('button', { name: /Red 01/ }).first()).toBeVisible({ timeout: 20_000 });
+  await page.goto('/hesabu/');
   await expect(page.getByText(/Hesabu ya leo/)).toBeVisible({ timeout: 20_000 });
-  await page.goto('/mauzo');
-  await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible({ timeout: 20_000 });
+  await page.goto('/mauzo/');
+  await expect(page.getByRole('button', { name: /Red 01/ }).first()).toBeVisible({ timeout: 20_000 });
 
   // A whole sale after the offline reload, sheets included. This is the case
   // that broke in production: the code-split sheets had never been fetched, so
   // the first sale made offline could not show its confirmation.
-  await page.getByRole('button', { name: /Nyanya/ }).first().click();
+  await page.getByRole('button', { name: /Red 01/ }).first().click();
   await page.getByRole('button', { name: 'Lipa taslimu' }).click();
   await expect(page.getByText('Imehifadhiwa!')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Mauzo mengine' }).click();
@@ -138,7 +189,7 @@ test('offline sales survive a reload and sync exactly once when the connection r
     )
     .toEqual([4, 4, 4]);
 
-  // Exactly once: three sale rows posted in total, no duplicates.
+  // Exactly once: four sale rows posted in total, no duplicates.
   const salePosts = server.posts.filter((p) => p.table === 'sales').flatMap((p) => p.ids);
   expect(salePosts).toHaveLength(4);
   expect(new Set(salePosts).size).toBe(4);
@@ -169,7 +220,7 @@ test.describe('data budget', () => {
 
 test('the sales screen fits the data budget on a cold load', async ({ page }) => {
   await fakeSupabase(page);
-  await signUpAndOnboard(page);
+  await firstSignIn(page);
 
   // Cold load: fresh navigation, measure JS actually transferred.
   const client = await page.context().newCDPSession(page);
@@ -180,14 +231,15 @@ test('the sales screen fits the data budget on a cold load', async ({ page }) =>
   const urls = new Map<string, string>();
   client.on('Network.responseReceived', (e) => {
     types.set(e.requestId, e.type);
-    urls.set(e.requestId, `${e.response.url} [${e.response.headers['content-encoding'] ?? 'identity'}]`);
+    const headers = Object.fromEntries(Object.entries(e.response.headers).map(([k, v]) => [k.toLowerCase(), v]));
+    urls.set(e.requestId, `${e.response.url} [${headers['content-encoding'] ?? 'identity'}]`);
   });
   client.on('Network.loadingFinished', (e) => {
     if (types.get(e.requestId) === 'Script') sizes.set(e.requestId, e.encodedDataLength);
   });
 
-  await page.goto('/mauzo', { waitUntil: 'load' });
-  await expect(page.getByRole('button', { name: /Nyanya/ }).first()).toBeVisible();
+  await page.goto('/mauzo/', { waitUntil: 'load' });
+  await expect(page.getByRole('button', { name: /Red 01/ }).first()).toBeVisible();
   await page.waitForTimeout(300);
 
   // What it takes to show the grid and take a sale. Measured before the
@@ -205,6 +257,9 @@ test('the sales screen fits the data budget on a cold load', async ({ page }) =>
   await page.waitForTimeout(7000);
   console.log(`after deferred warming: ${sum().toFixed(1)} KB`);
   test.info().annotations.push({ type: 'first-load-js-kb', description: firstLoadKb.toFixed(1) });
-  expect(firstLoadKb).toBeLessThan(200);
+  // 210KB, up from 200 in 0.2: on a static host the Swahili wording (~9KB)
+  // ships as one cached script instead of inside every page's HTML, where
+  // this test never counted it. Bytes on the wire per visit are no higher.
+  expect(firstLoadKb).toBeLessThan(210);
   });
 });

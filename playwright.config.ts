@@ -27,7 +27,6 @@ export default defineConfig({
     // A Supabase address that does not exist: the tests intercept every call to
     // it, so the real client and sync code run with no backend.
     env: {
-      NEXT_PUBLIC_DEV_OTP: '1',
       NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54329',
       NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key',
     },

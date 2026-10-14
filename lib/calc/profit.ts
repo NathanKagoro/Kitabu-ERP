@@ -1,3 +1,4 @@
+import { productLabel } from '../products';
 import type { Product, PurchaseLine, SaleLine } from '../types';
 import { unitMargin } from './packs';
 
@@ -48,7 +49,7 @@ export function productProfitability(input: {
     const unitCost = product?.cost ?? null;
     const row: ProductProfit = {
       productId,
-      name: product?.name ?? '—',
+      name: product ? productLabel(product) : '—',
       icon: product?.icon ?? null,
       qtySold: 0,
       revenue: 0,

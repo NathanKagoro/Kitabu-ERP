@@ -1,99 +1,110 @@
-# Deploying Hesabu
+# Deploying Kitabu
 
-Production is two services: **Supabase** (Postgres, phone auth) and **Vercel** (the Next.js app). There are no custom servers. Plan on about an hour the first time, most of it on the SMS provider.
+Kitabu is **plain files plus Supabase**. The app builds to a folder of static files (`out/`) that any static host serves: GitHub Pages (set up in this repo), Netlify, Cloudflare Pages. Nothing runs on the host. Supabase holds the database, the logins, and one small function that creates accounts.
 
-You need accounts on Supabase, Vercel and GitHub, plus an SMS provider that delivers to Tanzanian numbers (the spec suggests Beem Africa or Africa's Talking).
+There is no SMS provider. Shops get a **setup code** from you, sign in with their phone number and that code, and choose their own password.
+
+Plan on about 45 minutes the first time.
 
 ---
 
 ## 1. Supabase project
 
-1. Create a project at [supabase.com](https://supabase.com). Pick the region with the lowest latency from Dar es Salaam among those offered to you, and save the database password.
-2. **Project Settings → API**: copy the **Project URL** and the **anon public** key. These are safe to expose to the browser, because RLS is what protects the data.
-3. **Project Settings → Database → Connection string**: copy the **Session pooler** URI and put your password in it. This is `DATABASE_URL`. It is server-only, so never give it a `NEXT_PUBLIC_` name.
+1. Create a project at [supabase.com](https://supabase.com). Pick the region closest to Dar es Salaam that is offered to you, and save the database password.
+2. **Project Settings → API**: copy the **Project URL**, the **anon public** key, and the **service_role** key.
+   - The URL and anon key are safe to publish; Row Level Security is what protects the data.
+   - The **service_role key is a master key.** It only ever goes in `.env.local` on your own computer. Never in GitHub, never in the app.
+3. **Project Settings → Database → Connection string**: copy the **Session pooler** URI with your password in it. This is `DATABASE_URL` (also only on your computer).
 
-## 2. Create the schema
+## 2. Sign-in settings
 
-On your machine, in the repo:
+In **Authentication → Sign In / Providers**:
+
+1. **Allow new users to sign up: off.** Nobody can create a login from the app; only your account function can.
+2. **Email** provider: **on**, with **Confirm email: off**. Kitabu turns each phone number into a fixed login address (`255712345678@phone.kitabu.app`) that is never sent mail.
+3. Phone provider: leave off. No SMS is used.
+
+In **Authentication → URL Configuration**, set the **Site URL** to where the app lives (for example `https://nathankagoro.github.io/kitabu-erp/`).
+
+## 3. Create the database
+
+On your computer, in the repo:
 
 ```bash
 cp .env.example .env.local
-# fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, DATABASE_URL
+# fill in NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+#         DATABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 npm install
 npm run db:migrate
 ```
 
-This applies `db/migrations/` in order: the tables, then the RLS policies, views and functions. Run it again after any future migration; applied migrations are skipped.
+This applies `db/migrations/` in order: tables, the security policies, product bulk sizes, shop settings, and the accounts rules. Run it again after any future migration; applied ones are skipped.
 
-Check it in the Supabase dashboard:
-- **Table Editor**: 18 tables. Every one shows **RLS enabled**.
-- **Database → Functions**: `public_receipt`, `claim_invites`, `is_member` and the other helpers are listed.
+## 4. The accounts function
 
-## 3. Phone sign-in (OTP)
+Creating a login needs the service-role key, so it happens inside Supabase, in `supabase/functions/accounts`. Supabase gives the function its URL and service key automatically; there is nothing to configure.
 
-1. **Authentication → Providers → Phone**: enable it.
-2. Connect SMS delivery, using one of these:
-   - **A built-in provider** (Twilio, Vonage, MessageBird and others) if it delivers reliably to Tanzanian networks.
-   - **A Tanzanian provider** (Beem, Africa's Talking) through **Authentication → Hooks → Send SMS hook**. The hook receives the phone number and the OTP; your hook calls the provider's send-SMS API. A Supabase Edge Function is the usual place to host it. Follow the provider's API docs for the request format and sender ID, and check both before launch.
-3. Send yourself a code to a Vodacom, Airtel, Yas (Tigo) and Halotel number. Delivery varies by network.
+```bash
+npx supabase login
+npx supabase link --project-ref <your-project-ref>     # the id in your project's URL
+npx supabase functions deploy accounts
+```
 
-## 4. Vercel
+## 5. Your operator login
 
-1. Push the repo to GitHub. On [vercel.com](https://vercel.com), choose **Add New → Project** and import it. The framework is detected as Next.js.
-2. Leave the build command as `npm run build`. It runs `next build --webpack`, which is required: the service worker plugin produces nothing under Turbopack, and without it the app won't open offline.
-3. **Environment variables** (Production and Preview):
+```bash
+npm run operator -- 0712345678 'a-long-password-of-yours'
+```
 
-   | Name | Value |
+That makes your phone number the **operator**: the login that creates shops. Sign in to the app with it and open **/admin** (also under **Zaidi** if you own a shop yourself).
+
+## 6. GitHub Pages
+
+The workflow in `.github/workflows/pages.yml` checks, builds and publishes on every push to `main`.
+
+1. **Settings → Pages → Source: GitHub Actions.**
+2. **Settings → Secrets and variables → Actions → Variables** (variables, not secrets: these are all public):
+
+   | Variable | Value |
    |---|---|
-   | `NEXT_PUBLIC_SUPABASE_URL` | from step 1 |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | from step 1 |
-   | `NEXT_PUBLIC_DEV_OTP` | **leave unset in Production.** Set it to `1` only on a Preview deployment you want to demo without SMS. |
-   | `NEXT_PUBLIC_SENTRY_LOADER_URL` | optional, see step 5 |
+   | `SUPABASE_URL` | the Project URL |
+   | `SUPABASE_ANON_KEY` | the anon public key |
+   | `SUPPORT_WHATSAPP` | your number for the "contact us" buttons |
 
-   `DATABASE_URL` is **not** needed on Vercel. The app never connects to Postgres directly; it goes through Supabase's API under RLS.
+3. Run the workflow (push, or **Actions → Deploy to GitHub Pages → Run workflow**).
 
-4. Deploy. Then go to **Supabase → Authentication → URL Configuration** and add your Vercel domain as the Site URL.
+With the two Supabase variables unset, the published site is the **demo**: every visitor's data stays in their own browser, and sign-in takes any phone number with the setup code **KTAB-2468**. Safe to hand round; not for real shops.
 
-> **About `NEXT_PUBLIC_DEV_OTP`.** When it is on, the code `123456` signs someone into a *phone-only* identity if the real OTP fails. That identity has no Supabase session, so it can't read or write any server data (RLS sees no user). It still shouldn't be on in production, because a trader could end up keeping their records on one phone without realising they aren't syncing.
+Other hosts work the same way: build with the same `NEXT_PUBLIC_*` variables and serve `out/`. `netlify.toml` does this for Netlify.
 
-## 5. Error tracking (optional)
+## 7. Setting up a shop
 
-1. Create a free Sentry project (platform: Browser JavaScript).
-2. **Project Settings → Client Keys (DSN) → Loader Script**: copy the script URL.
-3. Set it as `NEXT_PUBLIC_SENTRY_LOADER_URL` on Vercel and redeploy.
+1. **/admin → Duka jipya**: shop name, type (cosmetics, clothes, hardware…), the owner's phone, colour.
+2. You get a **setup code** (e.g. `MK7P-34RT`). Send it with the WhatsApp button, or read it out.
+3. The owner opens the app, signs in with their phone and the code, chooses a password and a 4-digit PIN.
+4. A new shop starts on **bulk entry**: count a shelf, type it in, or paste a list from Excel. The quantities become the opening stock.
+5. **Zaidi → Mipangilio**: payment methods and Lipa Namba numbers, which parts of the app are on, receipt details.
 
-The loader is about 1 KB and pulls in the Sentry SDK only when an error happens, so it costs users no data on a normal day.
+Later:
+- **Forgotten password**: /admin → *Namba mpya ya mwenye duka* gives a fresh code. Owners do the same for their own staff under **Wafanyakazi**.
+- **Unpaid month**: /admin → *Simamisha* pauses the shop. Their records stay; the till shows "contact us" until you press *Rudisha*.
 
-## 6. Check the live deployment
+## 8. Check the live deployment
 
 On a real Android phone with Chrome:
 
-- [ ] Sign in with an SMS code, onboard, and set a PIN.
+- [ ] Create a test shop in /admin; sign in on the phone with the code; choose a password and PIN.
+- [ ] Bulk entry: two shades of one product with quantities; they appear on the till with stock.
 - [ ] **Add to Home screen** is offered, and the installed app opens full-screen.
-- [ ] Switch on airplane mode, record 3 sales, and close and reopen the app. The sales are still there and the header shows pending.
-- [ ] Airplane mode off: within a minute the header shows ✓, and the rows appear in the Supabase `sales` table.
-- [ ] Send a WhatsApp receipt, and open the link on a *different* phone. The receipt loads.
-- [ ] Sign in on a second phone with a different number. It sees none of the first business's data.
-- [ ] Invite a cashier by phone number. They sign in, see only that business, and have no void button and no profit line.
-
-## The public demo (Netlify)
-
-There is a demo at **https://hesabu-tz.netlify.app**, deployed from this repo to Netlify rather than Vercel, simply because that account already existed. Nothing in the app is host-specific; `netlify.toml` holds the whole configuration and `@netlify/plugin-nextjs` runs the Next.js server.
-
-```bash
-netlify deploy --build --prod     # from the repo root, once logged in
-```
-
-**The demo has no backend, and that is deliberate.** With no Supabase keys set:
-
-- every visitor gets their own private copy of the data, stored in their own browser, so people can try it without seeing each other's sales;
-- sign-in accepts **any Tanzanian mobile number with the code 123456**;
-- nothing syncs anywhere, and clearing browser data clears the demo.
-
-That makes it safe to hand round, but it is **not** a production deployment. For real users, follow the Supabase and Vercel steps above (or set the same environment variables on Netlify), and leave `NEXT_PUBLIC_DEV_OTP` unset so the fixed code cannot be used.
+- [ ] Airplane mode on: record 3 sales, close and reopen the app. The sales are there and the header shows pending.
+- [ ] Airplane mode off: within a minute the header shows ✓ and the rows appear in the Supabase `sales` table.
+- [ ] Send a WhatsApp receipt and open it on a *different* phone: shop colour, address, Lipa Namba.
+- [ ] Add a cashier under Wafanyakazi: they sign in with their code, see only that shop, and have no profit line.
+- [ ] Pause the shop in /admin: the phone shows the paused screen on its next sync.
 
 ## Updating
 
-- **Code**: merge to the production branch, and Vercel deploys it. Users get the new version the next time the app loads online, because the service worker activates it at once.
-- **Schema**: add a migration with `npm run db:generate` (or `npx drizzle-kit generate --custom --name=…` for hand-written SQL such as new policies), commit it, and run `npm run db:migrate` against production **before** deploying code that depends on it.
+- **Code**: push to `main`; the workflow publishes it. Phones get the new version the next time the app opens online.
+- **Schema**: add a migration (`npm run db:generate`, or `npx drizzle-kit generate --custom --name=…` for hand-written SQL such as policies), commit it, and run `npm run db:migrate` against production **before** pushing code that depends on it.
+- **The function**: `npx supabase functions deploy accounts` after changing anything in `supabase/functions/`.
 - **A new table** needs its RLS policies in the same migration, and a test in `tests/db/rls.test.ts`.

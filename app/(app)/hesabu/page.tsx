@@ -1,5 +1,6 @@
 'use client';
 
+import { productLabel } from '@/lib/products';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Info, Lock } from '@/components/icons';
 import { useTranslations } from 'next-intl';
@@ -53,7 +54,7 @@ export default function SummaryPage() {
     const points = salesByDay(rows.sales, days, (s) => businessDay(s.clientCreatedAt));
     const top = topProducts(rows.saleLines.filter((l) => live.has(l.saleId)), 5);
     const products = await db().products.bulkGet(top.map((p) => p.productId));
-    return { points, top: top.map((p, i) => ({ ...p, name: products[i]?.name ?? '—', icon: products[i]?.icon ?? '' })) };
+    return { points, top: top.map((p, i) => ({ ...p, name: products[i] ? productLabel(products[i]) : '—', icon: products[i]?.icon ?? '' })) };
   }, [businessId, today, range]);
 
   if (!data) return <PageHeader title={t('title')} back={false} />;

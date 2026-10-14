@@ -1,5 +1,6 @@
 'use client';
 
+import { productLabel } from '@/lib/products';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
@@ -60,7 +61,7 @@ export default function WastePage() {
                 className={cn('flex min-h-16 flex-col items-center justify-center rounded-[10px] border px-1 text-sm font-semibold', p.id === productId ? 'border-loss bg-loss-tint' : 'border-line bg-surface')}
               >
                 <span className="text-xl">{p.icon}</span>
-                <span className="line-clamp-1">{p.name}</span>
+                <span className="line-clamp-1">{productLabel(p)}</span>
               </button>
             ))}
           </div>

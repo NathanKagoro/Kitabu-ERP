@@ -1,5 +1,6 @@
 'use client';
 
+import { productLabel } from '@/lib/products';
 import { Plus, Trash2 } from '@/components/icons';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -42,7 +43,7 @@ function NewDocument() {
     setProductId(id);
     const product = products?.find((p) => p.id === id);
     if (product) {
-      setDescription(product.name);
+      setDescription(productLabel(product));
       setPrice(String(product.price));
     }
   };
@@ -85,7 +86,7 @@ function NewDocument() {
             <option value="">—</option>
             {products?.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {productLabel(p)}
               </option>
             ))}
           </Select>

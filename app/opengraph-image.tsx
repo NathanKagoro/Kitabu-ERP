@@ -61,7 +61,7 @@ export default function OpengraphImage() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', color: PAPER }}>
-          <div style={{ fontSize: 108, fontWeight: 700, letterSpacing: -2 }}>Hesabu</div>
+          <div style={{ fontSize: 108, fontWeight: 700, letterSpacing: -2 }}>Kitabu</div>
           <div style={{ fontSize: 44, opacity: 0.85, marginTop: 8 }}>Biashara yako, mkononi</div>
         </div>
       </div>

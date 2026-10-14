@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.3.0 — Kitabu: one app, many shops (2026-10-14)
+
+Hesabu becomes **Kitabu**, a template an operator sets up and customises per shop, aimed first at cosmetics, clothes and hardware shops in Dar. The code before this release is on the `hesabu-original` branch. Nothing here adds a dependency.
+
+### Plain files, hosted free
+- `next build` now writes a static site (`out/`). Nothing runs on the host; GitHub Pages publishes it from `.github/workflows/pages.yml` (checks, then build, then deploy), and `netlify.toml` does the same for Netlify.
+- The language lives on the phone instead of in a cookie (`components/locale-provider.tsx`). The HTML is Swahili; a phone set to English switches straight after load.
+- Record pages take `?id=` (`/bidhaa/hariri`, `/madeni/mteja`, `/hati/ona`), and receipt links are `/r/?t=<token>`, read in the browser. Old `/r/<token>` links redirect on Netlify.
+- Served from a sub-folder (`NEXT_PUBLIC_BASE_PATH`, e.g. `/kitabu-erp`), and the service worker precaches the main screens at install.
+- **Data budget:** the sales screen's first-load JS is 205 KB, measured gzipped on the static build (budget raised from 200 to 210 KB). The Swahili wording (~9 KB) now ships as one cached script instead of inside every page's HTML, where the old test never counted it. To stay inside it, the bottom tabs and the sales header no longer prefetch other screens' code; the service worker already holds it.
+
+### Sign-in without SMS
+- **Phone number + password.** The first password is a **setup code** (`ABCD-EFGH`, no characters that can be misread) from the operator, or from the owner for their staff. The next screen asks for a password of their own (`/neno-siri`), then the PIN.
+- **`supabase/functions/accounts`**, the only server code, running inside Supabase: `create_shop`, `list_shops`, `update_shop`, `issue_code`. An owner can issue codes for their own managers and cashiers, never for another owner or themselves. Permission rules are in `rules.ts` and unit-tested.
+- **`/admin`**, the operator's screen: create a shop (name, type, owner's phone, language, colour) and send the owner their code on WhatsApp; pause or reactivate a shop; give an owner a new code.
+- **`npm run operator`** makes the operator login (needs the service-role key in `.env.local`, never anywhere else).
+- **Migration 0004:** phones can no longer create businesses; `status` (active/paused) can only be changed by the service role (a phone's copy is ignored rather than refused, so the outbox never jams); the login lookup is closed to phones; receipts carry address, colour and Lipa Namba.
+- **Contact support** on WhatsApp from sign-in, the paused screen, "not linked to a shop", and Zaidi (`NEXT_PUBLIC_SUPPORT_WHATSAPP`).
+- A **paused** shop shows "contact us" instead of the till. Its records stay on the phone and still sync.
+- Staff (Wafanyakazi): adding someone gives the owner a setup code to hand over; *Namba mpya* resets a forgotten password.
+- The demo (no Supabase keys) still works end to end: any phone number with the setup code **KTAB-2468**.
+
+### Per-shop configuration (`lib/shop-config.ts`)
+- **New shop types: cosmetics (Vipodozi) and clothes & accessories (Nguo na mapambo).** Every type has a preset: which product details are asked for (shade; size and colour; type/size), starter categories, default unit, and feature defaults (cosmetics and clothes don't reprice every morning).
+- **Mipangilio** now has: shop type, **colour** (themes the whole app and the customer's receipt), address, **payment methods** taken (only those appear at the till), **Lipa Namba per method** (shown on the payment sheet and receipts), and an on/off switch for each part of the app (stock, credit, purchases, expenses, suppliers, losses, daily prices, staff, invoices, VAT). Each control saves on its own.
+- Features resolve shop override → preset → mode, so switching a type never loses data.
+- The demo-shop button only appears on the demo.
+
+### Products with shades and sizes
+- **Variants** are product rows sharing a name, with a `variant` column (migration 0003): stock, price and profit per shade work with nothing new in the ledger. Sale lines, receipts, invoices and reports read "Lipstick – Red 01".
+- **Bulk entry** (`/bidhaa/ingiza`): count a shelf and type it in, with *Rangi nyingine* copying a row for the next shade, or **paste a list** from Excel, Google Sheets or WhatsApp (tabs, commas or semicolons; "12,500" stays one number). Quantities become opening stock at cost. A new shop lands here straight after the PIN.
+- The till has **category chips** once a shop has more than one category, shows the shade on each tile, and searches name, shade, category and barcode.
+- The product list is grouped by category with search; the product form asks for shade/size, offers the trade's categories, and shows barcode where the preset wants it. *Rangi nyingine* on a product opens a new one prefilled.
+
+### Fixed
+- The till's bottom bar squeezed five-digit totals ("20,5…") between the pay buttons. The total now has its own line.
+
+### Tests
+- 146 unit and database tests (from 107): setup codes, phone-to-login mapping, function permissions, shop presets and feature precedence, payment methods, variant search and grouping, the paste parser, bulk save through sync, and the new database rules.
+- The end-to-end test is now an owner's real first day against a fake Supabase: setup code → own password → PIN → bulk entry of two shades → offline sales that sync exactly once.
+
 ## 0.2.1 — the app now really does open offline (2026-09-24)
 
 ### Fixed: the PWA could not be reopened without a connection

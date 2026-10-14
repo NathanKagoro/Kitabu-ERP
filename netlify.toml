@@ -1,18 +1,15 @@
-# Netlify deployment. The plan (docs/DEPLOY.md) targets Vercel; this is the
-# public demo, hosted where the account already existed. Both work: the app is
-# a standard Next.js build, and nothing in it is host-specific.
+# Netlify, as an alternative to GitHub Pages (.github/workflows/pages.yml).
+# Kitabu is plain files since 0.3: nothing runs on the host, so this is just
+# "build, then serve out/".
 
 [build]
-  # `--webpack` is required: the Serwist plugin emits no service worker under
-  # Turbopack, and without it the app cannot open offline.
+  # `--webpack` (inside npm run build) is required: the Serwist plugin emits no
+  # service worker under Turbopack, and without it the app cannot open offline.
   command = "npm run build"
-  publish = ".next"
+  publish = "out"
 
 [build.environment]
   NODE_VERSION = "22"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
 
 # The service worker must never be served stale, or a phone can be pinned to an
 # old build for as long as its cache lives.
@@ -21,9 +18,14 @@
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Receipts are shared links to other people's phones; keep them out of search
-# results, as the pages themselves already declare.
+# Receipts are shared links to other people's phones; keep them out of search.
 [[headers]]
   for = "/r/*"
   [headers.values]
     X-Robots-Tag = "noindex"
+
+# Receipt links sent before 0.3 were /r/<token>; they now live at /r/?t=<token>.
+[[redirects]]
+  from = "/r/:token"
+  to = "/r/?t=:token"
+  status = 301

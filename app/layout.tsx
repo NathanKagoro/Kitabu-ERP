@@ -11,6 +11,8 @@ import { DEFAULT_LOCALE } from '@/lib/i18n/config';
 import './globals.css';
 
 export const metadata: Metadata = {
+  // Absolute URLs for the link-preview image (set by the Pages build).
+  metadataBase: process.env.NEXT_PUBLIC_SITE_URL ? new URL(process.env.NEXT_PUBLIC_SITE_URL) : undefined,
   title: 'Kitabu',
   description: 'Biashara yako, mkononi',
   applicationName: 'Kitabu',
