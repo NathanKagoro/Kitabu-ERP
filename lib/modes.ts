@@ -8,6 +8,8 @@ import type { BusinessMode, BusinessType, MemberRole } from './types';
  */
 
 export const MODE_FOR_TYPE: Record<BusinessType, BusinessMode> = {
+  cosmetics: 'duka',
+  clothes: 'duka',
   genge: 'genge',
   duka: 'duka',
   pharmacy: 'duka',

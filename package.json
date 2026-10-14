@@ -1,12 +1,12 @@
 {
-  "name": "hesabu",
-  "version": "0.1.0",
+  "name": "kitabu",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
-    "start": "next start",
+    "start": "node scripts/serve-static.mjs 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -16,7 +16,9 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:migrate": "node scripts/migrate.mjs",
-    "icons": "node scripts/make-icon-set.mjs"
+    "icons": "node scripts/make-icon-set.mjs",
+    "preview": "npm run build && node scripts/serve-static.mjs 3000",
+    "operator": "node scripts/create-operator.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

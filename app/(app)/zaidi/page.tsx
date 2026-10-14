@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  Building2,
   ChevronRight,
   FileText,
   LogOut,
@@ -23,6 +24,7 @@ import { useApp } from '@/components/app-provider';
 import { Logo } from '@/components/brand/logo';
 import { FeedbackButton } from '@/components/feedback';
 import { PageHeader } from '@/components/ui/bits';
+import { SupportButton } from '@/components/support-button';
 import { signOut } from '@/lib/auth/session';
 import { clearUnlocked } from '@/lib/auth/unlock';
 import type { Feature, Permission } from '@/lib/modes';
@@ -38,7 +40,7 @@ interface Item {
 export default function MorePage() {
   const t = useTranslations();
   const router = useRouter();
-  const { show, can } = useApp();
+  const { show, can, operator, business } = useApp();
 
   const sections: { title: string; items: Item[] }[] = [
     {
@@ -66,7 +68,10 @@ export default function MorePage() {
     },
     {
       title: t('more.sections.system'),
-      items: [{ href: '/mipangilio', label: t('settings.title'), icon: <Settings size={22} />, permission: 'manageSettings' }],
+      items: [
+        { href: '/mipangilio', label: t('settings.title'), icon: <Settings size={22} />, permission: 'manageSettings' },
+        ...(operator ? [{ href: '/admin', label: t('admin.title'), icon: <Building2 size={22} /> }] : []),
+      ],
     },
   ];
 
@@ -102,6 +107,10 @@ export default function MorePage() {
       </section>
 
       <section className="space-y-2 px-3 pt-4 pb-4">
+        <SupportButton
+          message={t('support.generalMessage', { shop: business?.name ?? '' })}
+          className="card h-auto min-h-14 justify-start gap-3 px-4 text-left"
+        />
         <FeedbackButton icon={<MessageSquareText size={22} />} />
         <button
           onClick={() =>

@@ -16,8 +16,11 @@ import { createDemoBusiness } from '@/lib/demo';
 import { buildExport, downloadText, type ExportKind } from '@/lib/export';
 import { LOCALE_NAMES, LOCALES, type Locale } from '@/lib/i18n/config';
 import { persist } from '@/lib/local/write';
-import type { Business, BusinessMode } from '@/lib/types';
-import { setLocale } from '@/server/actions/locale';
+import type { Business } from '@/lib/types';
+import { ShopConfigSections } from '@/components/settings/shop-config';
+import { isDemo } from '@/lib/auth/session';
+import { APP_VERSION } from '@/lib/version';
+import { useSetLocale } from '@/components/locale-provider';
 
 export default function SettingsPage() {
   const t = useTranslations('settings');
@@ -32,6 +35,7 @@ function SettingsForm({ initial }: { initial: Business }) {
   const td = useTranslations('demo');
   const tpin = useTranslations('pin');
   const locale = useLocale();
+  const setLocale = useSetLocale();
   const router = useRouter();
   const toast = useToast();
   const { businessId, userId, show } = useApp();
@@ -53,7 +57,7 @@ function SettingsForm({ initial }: { initial: Business }) {
   };
 
   const exportCsv = async (kind: ExportKind) => {
-    downloadText(`hesabu-${kind}-${new Date().toISOString().slice(0, 10)}.csv`, await buildExport(businessId, kind));
+    downloadText(`kitabu-${kind}-${new Date().toISOString().slice(0, 10)}.csv`, await buildExport(businessId, kind));
   };
 
   return (
@@ -68,7 +72,6 @@ function SettingsForm({ initial }: { initial: Business }) {
               startTransition(async () => {
                 await setLocale(next);
                 await save({ ...draft, locale: next });
-                router.refresh();
               })
             }
             options={LOCALES.map((l) => ({ value: l, label: LOCALE_NAMES[l] }))}
@@ -76,25 +79,21 @@ function SettingsForm({ initial }: { initial: Business }) {
           {pending ? <p className="text-sm text-ink-faint">{tc('loading')}</p> : null}
         </section>
 
-        <section className="space-y-3">
-          <h2 className="font-bold">{t('mode')}</h2>
-          <p className="text-sm text-ink-soft">{t('modeHint')}</p>
-          <OptionGrid<BusinessMode>
-            columns={1}
-            value={draft.mode}
-            onChange={(mode) => {
-              const next = { ...draft, mode };
-              setDraft(next);
-              void save(next);
-            }}
-            options={(['genge', 'duka', 'biashara'] as const).map((m) => ({ value: m, label: t(`modes.${m}`), hint: t(`modeHints.${m}`) }))}
-          />
-        </section>
+        <ShopConfigSections
+          draft={draft}
+          onSave={(next) => {
+            setDraft(next);
+            void save(next);
+          }}
+        />
 
         <section className="space-y-3">
           <h2 className="font-bold">{t('business')}</h2>
           <Field label={t('businessName')}>{(id) => <TextInput id={id} value={draft.name} onChange={(e) => set('name', e.target.value)} />}</Field>
           <Field label={tc('phone')}>{(id) => <TextInput id={id} type="tel" value={draft.phone ?? ''} onChange={(e) => set('phone', e.target.value)} />}</Field>
+          <Field label={t('address')} hint={tc('optional')}>
+            {(id) => <TextInput id={id} placeholder={t('addressPlaceholder')} value={draft.settings.address ?? ''} onChange={(e) => setSetting('address', e.target.value)} />}
+          </Field>
           {show('vat') && (
             <div className="grid grid-cols-2 gap-3">
               <Field label={t('tin')}>{(id) => <TextInput id={id} value={draft.tin ?? ''} onChange={(e) => set('tin', e.target.value)} />}</Field>
@@ -146,7 +145,8 @@ function SettingsForm({ initial }: { initial: Business }) {
           </section>
         )}
 
-        <section className="card space-y-2 p-4">
+        {/* The demo shop only makes sense on the demo: a real shop cannot create businesses. */}
+        {isDemo() && <section className="card space-y-2 p-4">
           <h2 className="font-bold">{td('title')}</h2>
           <p className="text-sm text-ink-soft">{td('hint')}</p>
           <Button
@@ -166,9 +166,9 @@ function SettingsForm({ initial }: { initial: Business }) {
             <Sparkles size={18} />
             {demoBusy ? td('creating') : td('create')}
           </Button>
-        </section>
+        </section>}
 
-        <p className="text-center text-xs text-ink-faint">{t('version', { version: '0.1.0' })}</p>
+        <p className="text-center text-xs text-ink-faint">{t('version', { version: APP_VERSION })}</p>
       </div>
     </>
   );

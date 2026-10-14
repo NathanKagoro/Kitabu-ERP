@@ -1,88 +1,119 @@
 import { db, getMeta, META_KEYS, setMeta } from '../local/db';
 import { uuidv7 } from '../uuid';
-import { supabase } from '../supabase/client';
+import { supabase, isSupabaseConfigured } from '../supabase/client';
 import type { Business, Member } from '../types';
+import { isAcceptablePassword, loginEmail, normaliseSetupCode } from './login';
 import { normalisePhone } from './phone';
+import { hashPin, verifyPin, type PinHash } from './pin';
 
 /**
- * Sign-in has two paths that the rest of the app cannot tell apart:
+ * Signing in is a phone number and a password.
  *
- *   - Supabase configured: real phone OTP, real user id, data syncs.
- *   - Not configured: a local identity on this device. Everything works, the
- *     data simply stays on the phone until keys are added, at which point the
- *     outbox drains and nothing is lost.
+ *   - First time: the password is the setup code the operator (or the shop's
+ *     owner, for staff) handed over. The next screen asks for a password of
+ *     their own, and that is what they use from then on.
+ *   - Forgotten password: they ask for a new setup code. Nobody can sign up.
  *
- * The dev OTP (123456) is gated on an explicit env flag so it cannot be the
- * accidental state of a production build.
+ * Two modes the rest of the app cannot tell apart:
+ *   - Supabase configured: a real login, data syncs.
+ *   - Demo (no Supabase keys, e.g. the GitHub Pages preview): a login that
+ *     lives on this phone only. The setup code is always DEMO_CODE.
  */
 
-export const DEV_OTP = '123456';
+export const DEMO_CODE = 'KTAB-2468';
 
-export function devOtpEnabled(): boolean {
-  return process.env.NEXT_PUBLIC_DEV_OTP === '1' || !process.env.NEXT_PUBLIC_SUPABASE_URL;
+export function isDemo(): boolean {
+  return !isSupabaseConfigured();
 }
 
-export interface SendCodeResult {
+export type SignInError = 'invalidPhone' | 'wrongPassword' | 'offline' | 'server';
+
+export interface SignInResult {
   ok: boolean;
-  /** Present when the code was not really sent, so the UI can say so. */
-  devMode?: boolean;
-  error?: string;
+  userId?: string;
+  /** Signed in with a setup code: send them to choose a password. */
+  mustSetPassword?: boolean;
+  operator?: boolean;
+  error?: SignInError;
 }
 
-export async function sendCode(rawPhone: string): Promise<SendCodeResult> {
+export async function signIn(rawPhone: string, secret: string): Promise<SignInResult> {
   const phone = normalisePhone(rawPhone);
-  if (!phone) return { ok: false, error: 'invalidPhone' };
+  const email = loginEmail(rawPhone);
+  if (!phone || !email) return { ok: false, error: 'invalidPhone' };
+  if (!secret) return { ok: false, error: 'wrongPassword' };
 
   const client = await supabase();
-  if (!client) return { ok: true, devMode: true };
+  if (!client) return demoSignIn(phone, secret);
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, error: 'offline' };
 
-  const { error } = await client.auth.signInWithOtp({ phone });
-  if (error) {
-    // A misconfigured SMS provider should not lock a trader out of their own
-    // records; fall back to the local identity rather than dead-ending.
-    if (devOtpEnabled()) return { ok: true, devMode: true };
-    return { ok: false, error: error.message };
+  // Try exactly what was typed; if that fails and it looks like a setup code
+  // typed loosely ("abcd efgh"), try the code's canonical form.
+  const attempts = [secret];
+  const asCode = normaliseSetupCode(secret);
+  if (asCode && asCode !== secret) attempts.push(asCode);
+
+  for (const password of attempts) {
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      if (error.status && error.status >= 500) return { ok: false, error: 'server' };
+      continue;
+    }
+    const user = data.user;
+    const mustSetPassword = user.user_metadata?.must_set_password === true;
+    const operator = user.app_metadata?.kitabu_admin === true;
+    await adoptUser(user.id, phone);
+    await setMeta(META_KEYS.mustSetPassword, mustSetPassword);
+    await setMeta(META_KEYS.operator, operator);
+    await pullMemberships(user.id);
+    return { ok: true, userId: user.id, mustSetPassword, operator };
   }
+  return { ok: false, error: 'wrongPassword' };
+}
+
+export async function setPassword(password: string): Promise<{ ok: boolean; error?: 'tooShort' | 'offline' | 'server' }> {
+  if (!isAcceptablePassword(password)) return { ok: false, error: 'tooShort' };
+  const client = await supabase();
+  if (client) {
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return { ok: false, error: 'offline' };
+    const { error } = await client.auth.updateUser({ password, data: { must_set_password: false } });
+    if (error) return { ok: false, error: 'server' };
+  } else {
+    const phone = await getMeta<string | null>('phone', null);
+    if (!phone) return { ok: false, error: 'server' };
+    await setMeta(demoPasswordKey(phone), await hashPin(password));
+  }
+  await setMeta(META_KEYS.mustSetPassword, false);
   return { ok: true };
 }
 
-export interface VerifyResult {
-  ok: boolean;
-  userId?: string;
-  error?: string;
-}
+/** The demo keeps its passwords on the phone, hashed like the PIN. */
+const demoPasswordKey = (phone: string) => `demoPassword:${phone}`;
 
-export async function verifyCode(rawPhone: string, code: string): Promise<VerifyResult> {
-  const phone = normalisePhone(rawPhone);
-  if (!phone) return { ok: false, error: 'invalidPhone' };
-
-  const client = await supabase();
-  if (client) {
-    const { data, error } = await client.auth.verifyOtp({ phone, token: code, type: 'sms' });
-    if (!error && data.user) {
-      await adoptUser(data.user.id, phone);
-      await pullMemberships(data.user.id);
-      return { ok: true, userId: data.user.id };
-    }
-    if (!devOtpEnabled()) return { ok: false, error: 'invalidCode' };
-  }
-
-  if (!devOtpEnabled() || code !== DEV_OTP) return { ok: false, error: 'invalidCode' };
+async function demoSignIn(phone: string, secret: string): Promise<SignInResult> {
+  const stored = await getMeta<PinHash | null>(demoPasswordKey(phone), null);
+  const typed = normaliseSetupCode(secret);
+  const isCode = typed !== null && typed === normaliseSetupCode(DEMO_CODE);
+  let mustSetPassword: boolean;
+  if (stored && (await verifyPin(secret, stored))) mustSetPassword = false;
+  else if (isCode) mustSetPassword = true;
+  else return { ok: false, error: 'wrongPassword' };
 
   const userId = await localUserFor(phone);
   await adoptUser(userId, phone);
-  return { ok: true, userId };
+  await setMeta(META_KEYS.mustSetPassword, mustSetPassword);
+  await setMeta(META_KEYS.operator, false);
+  return { ok: true, userId, mustSetPassword, operator: false };
 }
 
 /**
- * A staff member signing in on their own phone: attach any invites made out to
- * this number, then bring down the businesses they now belong to so the app
- * opens on the right till.
+ * Bring down the businesses this login belongs to, so the app opens on the
+ * right till. Shops and staff are created on the server by the operator's
+ * function, so a first sign-in always finds its membership here.
  */
 async function pullMemberships(userId: string): Promise<void> {
   const client = await supabase();
   if (!client) return;
-  await client.rpc('claim_invites');
   const { data: members } = await client.from('members').select('*').eq('user_id', userId).eq('active', true);
   if (!members?.length) return;
   const { toCamelCase } = await import('../sync/engine');
@@ -122,6 +153,8 @@ export async function signOut(): Promise<void> {
   // not "throw away two weeks of sales".
   await setMeta(META_KEYS.userId, null);
   await setMeta(META_KEYS.unlockedAt, null);
+  await setMeta(META_KEYS.mustSetPassword, false);
+  await setMeta(META_KEYS.operator, false);
 }
 
 export async function memberFor(businessId: string, userId: string) {

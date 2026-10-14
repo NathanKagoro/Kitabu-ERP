@@ -1,6 +1,7 @@
 import { formatTZS } from './money';
 import { formatQty } from './units';
 import { whatsappNumber } from './auth/phone';
+import { BASE_PATH } from './base-path';
 
 export interface ReceiptLine {
   description: string;
@@ -15,8 +16,9 @@ export function receiptItemsText(lines: readonly ReceiptLine[]): string {
     .join('\n');
 }
 
+/** origin + base path, e.g. https://nathankagoro.github.io/kitabu-erp */
 export function receiptUrl(origin: string, token: string): string {
-  return `${origin.replace(/\/$/, '')}/r/${token}`;
+  return `${origin.replace(/\/$/, '')}${BASE_PATH}/r/?t=${token}`;
 }
 
 /**

@@ -36,15 +36,15 @@ async function as<T>(userId: string | null, fn: () => Promise<T>): Promise<T> {
 
 const rows = async (sql: string, params: unknown[] = []) => (await pg.query(sql, params)).rows;
 
+/** Shops are created by the operator's account function, as the service role. */
 async function createBusiness(userId: string, businessId: string, name: string) {
-  await as(userId, async () => {
-    await pg.query(`INSERT INTO businesses (id, name, type) VALUES ($1, $2, 'genge')`, [businessId, name]);
-    await pg.query(`INSERT INTO members (id, business_id, user_id, role) VALUES ($1, $2, $3, 'owner')`, [
-      id(),
-      businessId,
-      userId,
-    ]);
-  });
+  await pg.exec('RESET ROLE');
+  await pg.query(`INSERT INTO businesses (id, name, type) VALUES ($1, $2, 'genge')`, [businessId, name]);
+  await pg.query(`INSERT INTO members (id, business_id, user_id, role) VALUES ($1, $2, $3, 'owner')`, [
+    id(),
+    businessId,
+    userId,
+  ]);
 }
 
 beforeAll(async () => {
@@ -53,7 +53,7 @@ beforeAll(async () => {
     CREATE ROLE anon NOLOGIN;
     CREATE ROLE authenticated NOLOGIN;
     CREATE SCHEMA auth;
-    CREATE TABLE auth.users (id uuid PRIMARY KEY, phone text);
+    CREATE TABLE auth.users (id uuid PRIMARY KEY, phone text, email text);
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
       SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
     $$;
@@ -284,5 +284,49 @@ describe('bulk sizes', () => {
 
   it('another business cannot see them at all', async () => {
     expect(await as(USER_B, () => rows('SELECT * FROM product_packs'))).toHaveLength(0);
+  });
+});
+
+describe('accounts are made by the operator', () => {
+  it('nobody signed in can create a business', async () => {
+    await expect(
+      as(USER_A, () => pg.query(`INSERT INTO businesses (id, name, type) VALUES ($1, 'Mine', 'duka')`, [id()]))
+    ).rejects.toThrow(/row-level security/);
+  });
+
+  it('an owner cannot un-pause their own shop; the operator can pause it', async () => {
+    await pg.exec('RESET ROLE');
+    await pg.query(`UPDATE businesses SET status = 'paused' WHERE id = $1`, [BIZ_B]);
+
+    const edited = await as(USER_B, () =>
+      pg.query(`UPDATE businesses SET status = 'active', name = 'Duka B2' WHERE id = $1`, [BIZ_B])
+    );
+    // The write lands (the rest of the row is theirs) but the status is kept.
+    expect(edited.affectedRows).toBe(1);
+    expect(await as(USER_B, () => rows('SELECT name, status FROM businesses'))).toEqual([
+      { name: 'Duka B2', status: 'paused' },
+    ]);
+    await expect(
+      as(USER_B, () => pg.query(`UPDATE businesses SET status = 'gone' WHERE id = $1`, [BIZ_B]))
+    ).resolves.toBeTruthy();
+
+    await pg.exec('RESET ROLE');
+    await pg.query(`UPDATE businesses SET status = 'active' WHERE id = $1`, [BIZ_B]);
+  });
+
+  it('a status outside active/paused is refused', async () => {
+    await pg.exec('RESET ROLE');
+    await expect(pg.query(`UPDATE businesses SET status = 'deleted' WHERE id = $1`, [BIZ_A])).rejects.toThrow(
+      /businesses_status_check/
+    );
+  });
+
+  it('the login lookup is closed to phones', async () => {
+    await expect(
+      as(USER_A, () => pg.query(`SELECT public.auth_user_id_by_email('255712000111@phone.kitabu.app')`))
+    ).rejects.toThrow(/permission denied/);
+    await expect(
+      as(null, () => pg.query(`SELECT public.auth_user_id_by_email('255712000111@phone.kitabu.app')`))
+    ).rejects.toThrow(/permission denied/);
   });
 });

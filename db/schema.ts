@@ -88,7 +88,7 @@ export const businesses = pgTable('businesses', {
   /** Set by the database on every write; the pull cursor. Never trusted from a phone clock. */
   syncedAt: timestamp('synced_at', { withTimezone: true }).defaultNow().notNull(),
   name: text('name').notNull(),
-  /** The onboarding picker value: genge, duka, pharmacy, hardware, wholesale, services, other. */
+  /** The shop type: cosmetics, clothes, hardware, duka, genge, pharmacy, wholesale, services, other. */
   type: text('type').notNull(),
   /** Derived from type, but switchable later in settings without touching data. */
   mode: businessMode('mode').notNull().default('genge'),
@@ -98,6 +98,8 @@ export const businesses = pgTable('businesses', {
   logoUrl: text('logo_url'),
   locale: text('locale').notNull().default('sw'),
   settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
+  /** 'active' | 'paused'. Only the operator (service role) can change it; see 0004. */
+  status: text('status').notNull().default('active'),
   ...rowStamps,
 });
 
@@ -145,6 +147,8 @@ export const products = pgTable(
     sku: text('sku'),
     barcode: text('barcode'),
     category: text('category'),
+    /** Shade, size, colour, gauge: what tells two of the same product apart. */
+    variant: text('variant'),
     vatType: vatType('vat_type').notNull().default('standard'),
     sortOrder: bigint('sort_order', { mode: 'number' }).notNull().default(0),
     active: boolean('active').notNull().default(true),

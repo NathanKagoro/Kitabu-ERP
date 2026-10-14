@@ -4,7 +4,8 @@ export type Locale = (typeof LOCALES)[number];
 /** Swahili is the product, English is the fallback -- not the other way round. */
 export const DEFAULT_LOCALE: Locale = 'sw';
 
-export const LOCALE_COOKIE = 'hesabu_locale';
+/** Where the phone remembers its language (localStorage). */
+export const LOCALE_STORAGE_KEY = 'kitabu_locale';
 
 export const LOCALE_NAMES: Record<Locale, string> = {
   sw: 'Kiswahili',

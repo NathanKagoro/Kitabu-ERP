@@ -15,18 +15,19 @@ export default defineConfig({
     viewport: { width: 360, height: 740 },
     locale: 'sw-TZ',
     trace: 'retain-on-failure',
+    // A system Chrome can stand in for Playwright's own download.
+    launchOptions: process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {},
   },
   projects: [{ name: 'chromium-mobile', use: { browserName: 'chromium' } }],
   webServer: {
-    command: 'npm run build && npx next start -p 3217',
-    url: 'http://localhost:3217/ingia',
+    command: 'npm run build && node scripts/serve-static.mjs 3217 out',
+    url: 'http://localhost:3217/ingia/',
     timeout: 300_000,
     reuseExistingServer: false,
     // A Supabase address that does not exist: the tests intercept every call to
     // it, so the real client and sync code run with no backend.
     env: {
       NEXT_PUBLIC_DEV_OTP: '1',
-      NEXT_DIST_DIR: '.next-e2e',
       NEXT_PUBLIC_SUPABASE_URL: 'http://127.0.0.1:54329',
       NEXT_PUBLIC_SUPABASE_ANON_KEY: 'e2e-anon-key',
     },

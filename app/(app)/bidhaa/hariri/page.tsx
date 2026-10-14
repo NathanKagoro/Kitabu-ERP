@@ -1,9 +1,9 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
 import { draftFrom, ProductForm } from '@/components/products/product-form';
@@ -16,8 +16,17 @@ import { adjustStock, archiveProduct, saveProduct, saveProductPacks } from '@/li
 import { db } from '@/lib/local/db';
 import { formatQty } from '@/lib/units';
 
-export default function EditProductPage() {
-  const { id } = useParams<{ id: string }>();
+/** Static hosting has no per-record pages, so the record comes in as ?id=. */
+export default function EditProductPageRoute() {
+  return (
+    <Suspense>
+      <EditProductPage />
+    </Suspense>
+  );
+}
+
+function EditProductPage() {
+  const id = useSearchParams().get('id') ?? '';
   const t = useTranslations('products');
   const tc = useTranslations('common');
   const router = useRouter();

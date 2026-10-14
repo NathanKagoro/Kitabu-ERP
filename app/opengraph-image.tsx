@@ -6,9 +6,10 @@ import { ImageResponse } from 'next/og';
  * mark and colours as the icons; rendered at build time, so it costs the phone
  * nothing.
  */
-export const alt = 'Hesabu — biashara yako, mkononi';
+export const alt = 'Kitabu — biashara yako, mkononi';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
+export const dynamic = 'force-static';
 
 const BRAND = '#0f6b3f';
 const PAPER = '#faf8f4';

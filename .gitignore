@@ -18,3 +18,4 @@ coverage
 
 # Local Netlify folder
 .netlify
+out-e2e

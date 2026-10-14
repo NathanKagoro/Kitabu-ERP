@@ -15,7 +15,15 @@ export function LocalReceipt({ token, notFound }: { token: string; notFound: str
       db().saleLines.where('saleId').equals(sale.id).toArray(),
     ]);
     return {
-      business: { name: business?.name ?? '', phone: business?.phone, tin: business?.tin, footer: business?.settings.receiptFooter },
+      business: {
+        name: business?.name ?? '',
+        phone: business?.phone,
+        tin: business?.tin,
+        footer: business?.settings.receiptFooter,
+        address: business?.settings.address,
+        brandColor: business?.settings.brandColor,
+        tillNumbers: business?.settings.tillNumbers,
+      },
       sale: { total: sale.total, discount: sale.discount, status: sale.status, createdAt: sale.clientCreatedAt },
       lines: lines.map((l) => ({ description: l.description ?? '', qty: l.qty, unitPrice: l.unitPrice, lineTotal: l.lineTotal })),
     };

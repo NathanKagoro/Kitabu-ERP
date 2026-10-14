@@ -1,13 +1,15 @@
+'use client';
+
 import { CloudOff } from '@/components/icons';
 import Link from 'next/link';
 
 import { Logo } from '@/components/brand/logo';
-import { getTranslations } from 'next-intl/server';
+import { useTranslations } from 'next-intl';
 
 /** Served by the service worker for a page that was never cached. */
-export default async function OfflinePage() {
-  const t = await getTranslations('sync');
-  const tn = await getTranslations('nav');
+export default function OfflinePage() {
+  const t = useTranslations('sync');
+  const tn = useTranslations('nav');
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 text-center">
       <Logo size={56} />

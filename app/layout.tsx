@@ -1,20 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import { NextIntlClientProvider } from 'next-intl';
-import { getLocale, getMessages } from 'next-intl/server';
 
 import { AppProvider } from '@/components/app-provider';
 import { ErrorReporting } from '@/components/error-reporting';
+import { LocaleProvider } from '@/components/locale-provider';
 import { ServiceWorker } from '@/components/service-worker';
+import { ThemeColor } from '@/components/theme-color';
 import { ToastProvider } from '@/components/ui/toast';
+import { DEFAULT_LOCALE } from '@/lib/i18n/config';
 
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Hesabu',
+  title: 'Kitabu',
   description: 'Biashara yako, mkononi',
-  applicationName: 'Hesabu',
-  manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Hesabu', statusBarStyle: 'default' },
+  applicationName: 'Kitabu',
+  appleWebApp: { capable: true, title: 'Kitabu', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
 };
 
@@ -28,20 +28,19 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang={locale}>
+    // The language is switched on the phone after load (see LocaleProvider).
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
       <body>
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <LocaleProvider>
           <AppProvider>
+            <ThemeColor />
             <ToastProvider>{children}</ToastProvider>
             <ServiceWorker />
             <ErrorReporting />
           </AppProvider>
-        </NextIntlClientProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

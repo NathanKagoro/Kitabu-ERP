@@ -53,7 +53,7 @@ export default function DocumentsPage() {
       <ul className="divide-y divide-line">
         {rows?.map(({ doc, customer }) => (
           <li key={doc.id}>
-            <Link href={`/hati/${doc.id}`} className="flex min-h-16 items-center gap-3 px-4 py-2 active:bg-surface">
+            <Link href={`/hati/ona?id=${doc.id}`} className="flex min-h-16 items-center gap-3 px-4 py-2 active:bg-surface">
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold">{doc.number}</span>
                 <span className="block truncate text-sm text-ink-faint">{customer}</span>

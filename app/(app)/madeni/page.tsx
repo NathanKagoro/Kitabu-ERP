@@ -66,7 +66,7 @@ export default function CreditPage() {
         <ul className="card mx-3 divide-y divide-line overflow-hidden">
           {filtered.map((customer) => (
             <li key={customer.id}>
-              <Link href={`/madeni/${customer.id}`} className="flex min-h-16 items-center gap-3 px-4 py-2 active:bg-paper">
+              <Link href={`/madeni/mteja?id=${customer.id}`} className="flex min-h-16 items-center gap-3 px-4 py-2 active:bg-paper">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">{customer.name}</span>
                   <span className="block truncate text-sm text-ink-faint">

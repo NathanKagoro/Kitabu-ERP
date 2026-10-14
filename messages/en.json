@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Hesabu",
+    "name": "Kitabu",
     "tagline": "Your business, in your hand"
   },
   "common": {
@@ -58,20 +58,33 @@
     "savedOnPhone": "Saved on phone"
   },
   "auth": {
-    "signInTitle": "Sign in to Hesabu",
-    "signInSubtitle": "Enter your phone number. We will send you a code.",
+    "signInTitle": "Sign in to Kitabu",
+    "signInSubtitle": "Enter your phone number and password.",
     "phoneLabel": "Phone number",
     "phonePlaceholder": "0712 345 678",
-    "sendCode": "Send me a code",
-    "codeTitle": "Enter the code we sent",
-    "codeSubtitle": "We sent a 6-digit code to {phone}",
-    "codeLabel": "Verification code",
-    "verify": "Verify",
-    "resend": "Send again",
-    "changeNumber": "Change number",
-    "devCodeHint": "Dev mode: use 123456",
+    "passwordLabel": "Password",
+    "passwordHint": "or setup code",
+    "show": "Show",
+    "hide": "Hide",
+    "signIn": "Sign in",
+    "signingIn": "Signing in...",
+    "demoHint": "This is a demo. Sign in with any phone number and the setup code {code}.",
+    "forgot": "Forgot your password? Contact us",
+    "supportMessage": "Hello, I need help signing in to Kitabu. My number is {phone}.",
+    "newPasswordTitle": "Choose your password",
+    "newPasswordSubtitle": "You will use it every time you sign in. At least {min} characters. Keep it to yourself.",
+    "newPassword": "New password",
+    "confirmPassword": "Repeat the password",
+    "savePassword": "Save and continue",
     "invalidPhone": "That phone number is not valid",
-    "invalidCode": "Wrong code. Try again.",
+    "errors": {
+      "invalidPhone": "That phone number is not valid",
+      "wrongPassword": "Wrong phone number or password.",
+      "offline": "No connection. Signing in for the first time needs the internet.",
+      "server": "Something went wrong on our side. Try again in a moment.",
+      "tooShort": "Use {min} or more characters.",
+      "mismatch": "The two passwords do not match."
+    },
     "signOut": "Sign out",
     "signOutConfirm": "Are you sure you want to sign out?"
   },
@@ -90,7 +103,7 @@
     "forgotHelp": "Sign out, then sign in again with your phone number."
   },
   "onboarding": {
-    "welcomeTitle": "Welcome to Hesabu",
+    "welcomeTitle": "Welcome to Kitabu",
     "welcomeBody": "Three questions and we are done. A minute from now you are selling.",
     "start": "Start",
     "nameTitle": "What is your business called?",
@@ -103,6 +116,10 @@
     "starterTitle": "We added some products to start you off",
     "starterBody": "Tap to remove any you do not sell. Prices come later.",
     "types": {
+      "cosmetics": "Cosmetics",
+      "cosmeticsHint": "Lotions, make-up, perfume",
+      "clothes": "Clothes & accessories",
+      "clothesHint": "Clothes, shoes, bags, jewellery",
       "genge": "Stall / kiosk",
       "gengeHint": "Vegetables, fruit, charcoal by the road",
       "duka": "Shop",
@@ -174,7 +191,8 @@
     "newCustomer": "New customer",
     "needCustomer": "Choose a customer for a credit sale",
     "confirm": "Confirm payment",
-    "payFull": "Paid in full"
+    "payFull": "Paid in full",
+    "tillNumber": "Lipa Namba: {number}"
   },
   "receipt": {
     "title": "Receipt",
@@ -479,7 +497,44 @@
     "exportCustomers": "Customers",
     "exportStock": "Stock",
     "about": "About",
-    "version": "Version {version}"
+    "version": "Version {version}",
+    "shopType": "Type of shop",
+    "shopTypeHint": "Decides what you see and what products ask for (shade, size...). Nothing is lost when you change it.",
+    "look": "Look",
+    "colour": "Shop colour",
+    "colourHint": "The colour of the app and of your customers' receipts.",
+    "address": "Shop location",
+    "addressPlaceholder": "e.g. Kariakoo, Congo Street",
+    "payments": "Payment methods",
+    "paymentsHint": "Only the ones you take will show when selling.",
+    "tillNumber": "{method} number",
+    "tillHint": "Lipa Namba, shown on receipts",
+    "features": "Parts of the app",
+    "featuresHint": "Switch on only what you need. Switching off deletes nothing.",
+    "featureNames": {
+      "stockTracking": "Stock",
+      "credit": "Customer credit",
+      "purchases": "Purchases",
+      "expenses": "Expenses",
+      "suppliers": "Suppliers",
+      "waste": "Losses",
+      "dailyPriceUpdate": "Daily prices",
+      "staff": "Staff",
+      "documents": "Invoices and proformas",
+      "vat": "VAT and TIN"
+    },
+    "featureHints": {
+      "stockTracking": "Count what is left, warn when it runs low",
+      "credit": "Sell on credit and track repayments",
+      "purchases": "Record the stock you buy",
+      "expenses": "Transport, rent, electricity and the rest",
+      "suppliers": "Who you owe and who owes you",
+      "waste": "What spoiled or went missing",
+      "dailyPriceUpdate": "Change prices each morning",
+      "staff": "Staff with their own logins",
+      "documents": "Invoices, proformas, delivery notes",
+      "vat": "VAT on prices and receipts"
+    }
   },
   "more": {
     "title": "More",
@@ -534,5 +589,71 @@
     "bestSeller": "Best earner",
     "weakest": "Weakest",
     "losing": "Losing money"
+  },
+  "support": {
+    "contact": "Contact us on WhatsApp",
+    "generalMessage": "Hello, I need help with Kitabu ({shop}).",
+    "pausedTitle": "Account paused",
+    "pausedBody": "This shop has been paused. Your records are safe. Contact us to switch it back on.",
+    "pausedMessage": "Hello, Kitabu for {shop} has been paused. I would like to switch it back on.",
+    "notLinkedTitle": "Not linked to a shop yet",
+    "notLinkedBody": "You are signed in, but your number is not linked to any shop yet. Contact us and we will sort it out.",
+    "notLinkedMessage": "Hello, I signed in to Kitabu but I am not linked to a shop."
+  },
+  "accounts": {
+    "codeTitle": "Setup code",
+    "codeBody": "Give {name} this code. They sign in with their phone number and this code, then choose their own password.",
+    "codeOnce": "This code is shown once. If it gets lost, issue a new one.",
+    "linkedTitle": "Linked",
+    "linkedBody": "{name} already has a Kitabu login. They sign in with their usual password.",
+    "codeMessage": "Welcome to Kitabu ({shop})!\nOpen: {url}\nPhone number: {phone}\nSetup code: {code}\nOnce you are in, choose your own password.",
+    "linkedMessage": "You have been added to Kitabu for {shop}. Open {url} and sign in with your password.",
+    "sendWhatsapp": "Send on WhatsApp",
+    "getCode": "Get code",
+    "newCode": "New code",
+    "errors": {
+      "noBackend": "This is the demo, it has no server.",
+      "offline": "No connection. Try again when online.",
+      "signedOut": "Your session has expired. Sign out and in again.",
+      "notOperator": "This account does not have that permission.",
+      "notAllowed": "You are not allowed to do that.",
+      "noMember": "This person has not reached the server yet. Wait a moment and try again.",
+      "noShop": "That shop does not exist.",
+      "badName": "Enter the shop name.",
+      "badType": "Choose the type of shop.",
+      "badPhone": "That phone number is not valid.",
+      "server": "Something went wrong on the server. Try again."
+    }
+  },
+  "admin": {
+    "title": "All shops",
+    "count": "{count, plural, one {1 shop} other {# shops}}",
+    "refresh": "Refresh",
+    "newShop": "New shop",
+    "staff": "{count, plural, one {1 staff} other {# staff}}",
+    "statusActive": "Active",
+    "statusPaused": "Paused",
+    "ownerFirstCode": "Setup code",
+    "ownerNewCode": "New owner code",
+    "activate": "Reactivate",
+    "pause": "Pause",
+    "paused": "Shop paused",
+    "activated": "Shop reactivated",
+    "empty": "No shops yet. Tap \"New shop\" to start.",
+    "shopName": "Shop name",
+    "shopNamePlaceholder": "e.g. Mama Neema Cosmetics",
+    "shopType": "Type of shop",
+    "ownerName": "Owner's name",
+    "ownerPhone": "Owner's phone number",
+    "language": "Language",
+    "colour": "Shop colour",
+    "create": "Create shop",
+    "resetConfirm": "A new code replaces the current password of {shop}'s owner. Continue?",
+    "pauseConfirm": "Pause {shop}? They will not be able to sell until you reactivate it.",
+    "demoOnly": "This page works only when Kitabu is connected to Supabase.",
+    "notOperator": "This is not the operator account.",
+    "errors": {
+      "name": "Enter the shop name."
+    }
   }
 }

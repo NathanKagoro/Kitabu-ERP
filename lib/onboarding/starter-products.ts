@@ -12,6 +12,10 @@ export interface StarterProduct {
  * genge and the owner sets them on the Bei za leo screen.
  */
 export const STARTER_PRODUCTS: Record<BusinessType, readonly StarterProduct[]> = {
+  // Cosmetics and clothes shops carry hundreds of lines with shades and sizes;
+  // a starter list would only be deleted. They start on bulk entry instead.
+  cosmetics: [],
+  clothes: [],
   genge: [
     { name: 'Nyanya', unit: 'fungu', icon: '🍅' },
     { name: 'Vitunguu', unit: 'fungu', icon: '🧅' },

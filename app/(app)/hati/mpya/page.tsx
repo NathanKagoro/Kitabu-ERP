@@ -67,7 +67,7 @@ function NewDocument() {
     if (!businessId || !customerId || lines.length === 0) return;
     const doc = await createDocument({ businessId, userId, kind, customerId, lines, vatRate, notes: notes || null, dueDate: dueDate || null });
     toast(tc('saved'));
-    router.replace(`/hati/${doc.id}`);
+    router.replace(`/hati/ona?id=${doc.id}`);
   };
 
   return (

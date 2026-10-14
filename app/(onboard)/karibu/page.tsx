@@ -1,16 +1,6 @@
 'use client';
 
-import {
-  Briefcase,
-  Building2,
-  Carrot,
-  Check,
-  HelpCircle,
-  Pill,
-  Store,
-  Truck,
-  Wrench,
-} from '@/components/icons';
+import { Building2, Check } from '@/components/icons';
 import { useLocale, useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
@@ -22,29 +12,65 @@ import { Field, TextInput } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
 import { LOCALE_NAMES, LOCALES } from '@/lib/i18n/config';
 import { createBusiness } from '@/lib/onboarding/create-business';
+import { isDemo, signOut } from '@/lib/auth/session';
+import { SupportButton } from '@/components/support-button';
 import { STARTER_PRODUCTS } from '@/lib/onboarding/starter-products';
 import type { BusinessType } from '@/lib/types';
-import { setLocale } from '@/server/actions/locale';
+import { useSetLocale } from '@/components/locale-provider';
+import { SHOP_TYPE_OPTIONS } from '@/components/shop-types';
 
-const TYPES: { type: BusinessType; Icon: typeof Store }[] = [
-  { type: 'genge', Icon: Carrot },
-  { type: 'duka', Icon: Store },
-  { type: 'pharmacy', Icon: Pill },
-  { type: 'hardware', Icon: Wrench },
-  { type: 'wholesale', Icon: Truck },
-  { type: 'services', Icon: Briefcase },
-  { type: 'other', Icon: HelpCircle },
-];
+const TYPES = SHOP_TYPE_OPTIONS;
 
 /**
  * Three screens, no more: name (with the language switch on it, so everything
  * after is in the right language), type, and the starter list. Every other
  * setting waits until the owner actually needs it.
  */
-export default function OnboardingPage() {
+/**
+ * With a server, shops are created by the operator, so a login that reaches
+ * this page belongs to no shop yet: say so and offer the support chat. Only
+ * the demo (no server) lets someone set up a shop on the phone itself.
+ */
+export default function OnboardingRoute() {
+  return isDemo() ? <OnboardingPage /> : <NotLinked />;
+}
+
+function NotLinked() {
+  const t = useTranslations('support');
+  const ta = useTranslations('auth');
+  const router = useRouter();
+  const { ready, userId, businessId } = useApp();
+
+  useEffect(() => {
+    if (!ready) return;
+    if (!userId) router.replace('/ingia');
+    else if (businessId) router.replace('/mauzo');
+  }, [ready, userId, businessId, router]);
+
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-4 px-6 text-center">
+      <Logo size={56} />
+      <h1 className="text-xl font-bold">{t('notLinkedTitle')}</h1>
+      <p className="text-ink-soft">{t('notLinkedBody')}</p>
+      <SupportButton message={t('notLinkedMessage')} />
+      <Button
+        variant="ghost"
+        onClick={async () => {
+          await signOut();
+          router.replace('/ingia');
+        }}
+      >
+        {ta('signOut')}
+      </Button>
+    </main>
+  );
+}
+
+function OnboardingPage() {
   const t = useTranslations('onboarding');
   const tc = useTranslations('common');
   const locale = useLocale();
+  const setLocale = useSetLocale();
   const router = useRouter();
   const { ready, userId, businessId } = useApp();
   const [pending, startTransition] = useTransition();
@@ -96,7 +122,6 @@ export default function OnboardingPage() {
                 disabled={pending}
                 onClick={() => startTransition(async () => {
                   await setLocale(option);
-                  router.refresh();
                 })}
                 className={cn(
                   'h-11 rounded-full border px-4 text-sm font-semibold',

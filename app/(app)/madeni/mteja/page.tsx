@@ -2,11 +2,12 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { HandCoins, MessageCircle } from '@/components/icons';
-import { useParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { paymentMethodsOf } from '@/lib/shop-config';
 import { useLastPaidLabel } from '@/components/customers/last-paid';
 import { Money, OptionGrid, PageHeader } from '@/components/ui/bits';
 import { Button } from '@/components/ui/button';
@@ -22,8 +23,17 @@ import { formatTZS } from '@/lib/money';
 import { fillTemplate, whatsappLink } from '@/lib/receipt';
 import type { PaymentMethod } from '@/lib/types';
 
-export default function CustomerPage() {
-  const { id } = useParams<{ id: string }>();
+/** Static hosting has no per-record pages, so the record comes in as ?id=. */
+export default function CustomerPageRoute() {
+  return (
+    <Suspense>
+      <CustomerPage />
+    </Suspense>
+  );
+}
+
+function CustomerPage() {
+  const id = useSearchParams().get('id') ?? '';
   const t = useTranslations('customers');
   const tp = useTranslations('payment');
   const tc = useTranslations('common');
@@ -33,7 +43,7 @@ export default function CustomerPage() {
 
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PaymentMethod>('cash');
+  const [method, setMethod] = useState<PaymentMethod>(() => paymentMethodsOf(business)[0] ?? 'cash');
   const [reference, setReference] = useState('');
 
   const data = useLiveQuery(async () => {
@@ -138,7 +148,7 @@ export default function CustomerPage() {
             value={method}
             onChange={setMethod}
             columns={3}
-            options={(['cash', 'mpesa', 'mixx', 'airtel', 'halopesa', 'bank'] as const).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
+            options={paymentMethodsOf(business).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
           />
           {method !== 'cash' && (
             <Field label={tp('reference')} hint={tp('referenceHint')}>

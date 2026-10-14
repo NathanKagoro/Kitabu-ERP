@@ -1,18 +1,13 @@
 import { getRequestConfig } from 'next-intl/server';
-import { cookies } from 'next/headers';
 
-import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE } from './config';
+import { DEFAULT_LOCALE } from './config';
 
 /**
- * No locale prefix in the URL. Language is a setting the owner picks once, kept
- * in a cookie, so that an installed PWA and a shared receipt link never carry
- * /sw/ or /en/ around with them.
+ * Used only at build time, to write the static HTML. That HTML is always in
+ * Swahili; a phone set to English switches on the client (see
+ * components/locale-provider.tsx), because a static host has no cookies to read.
  */
 export default getRequestConfig(async () => {
-  const store = await cookies();
-  const cookieLocale = store.get(LOCALE_COOKIE)?.value;
-  const locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
-
-  const messages = (await import(`../../messages/${locale}.json`)).default;
-  return { locale, messages, timeZone: 'Africa/Dar_es_Salaam' };
+  const messages = (await import(`../../messages/${DEFAULT_LOCALE}.json`)).default;
+  return { locale: DEFAULT_LOCALE, messages, timeZone: 'Africa/Dar_es_Salaam' };
 });

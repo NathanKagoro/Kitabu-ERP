@@ -2,11 +2,12 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ArrowRight, Download, HandCoins, MessageCircle } from '@/components/icons';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { paymentMethodsOf } from '@/lib/shop-config';
 import { Badge, Money, OptionGrid, PageHeader, Row } from '@/components/ui/bits';
 import { Button } from '@/components/ui/button';
 import { AmountInput, Field } from '@/components/ui/field';
@@ -20,8 +21,17 @@ import { whatsappLink } from '@/lib/receipt';
 import { formatQty } from '@/lib/units';
 import type { PaymentMethod } from '@/lib/types';
 
-export default function DocumentPage() {
-  const { id } = useParams<{ id: string }>();
+/** Static hosting has no per-record pages, so the record comes in as ?id=. */
+export default function DocumentPageRoute() {
+  return (
+    <Suspense>
+      <DocumentPage />
+    </Suspense>
+  );
+}
+
+function DocumentPage() {
+  const id = useSearchParams().get('id') ?? '';
   const t = useTranslations('documents');
   const tp = useTranslations('payment');
   const tc = useTranslations('common');
@@ -30,7 +40,10 @@ export default function DocumentPage() {
   const { business, businessId, userId, vatRate } = useApp();
   const [paying, setPaying] = useState(false);
   const [amount, setAmount] = useState('');
-  const [method, setMethod] = useState<PaymentMethod>('bank');
+  const [method, setMethod] = useState<PaymentMethod>(() => {
+    const methods = paymentMethodsOf(business);
+    return methods.includes('bank') ? 'bank' : (methods[0] ?? 'cash');
+  });
 
   const data = useLiveQuery(async () => {
     const doc = await db().documents.get(id);
@@ -50,7 +63,7 @@ export default function DocumentPage() {
 
   const convert = async (kind: 'delivery_note' | 'invoice') => {
     const created = await convertDocument(doc.id, kind, { businessId, userId, vatRate });
-    router.replace(`/hati/${created.id}`);
+    router.replace(`/hati/ona?id=${created.id}`);
   };
 
   const pdf = async () => {
@@ -153,7 +166,7 @@ export default function DocumentPage() {
             value={method}
             onChange={setMethod}
             columns={3}
-            options={(['bank', 'cash', 'mpesa', 'mixx', 'airtel', 'halopesa'] as const).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
+            options={paymentMethodsOf(business).map((m) => ({ value: m, label: tp(`methods.${m}`) }))}
           />
           <Button
             size="lg"

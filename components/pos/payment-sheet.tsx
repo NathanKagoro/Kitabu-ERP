@@ -11,7 +11,9 @@ import { AmountInput, Field, TextInput } from '@/components/ui/field';
 import { Sheet } from '@/components/ui/sheet';
 import { changeDue, creditPortion, type Tender } from '@/lib/calc/sale';
 import { parseTZS } from '@/lib/money';
-import { MOBILE_MONEY_METHODS, type PaymentMethod } from '@/lib/types';
+import { useApp } from '@/components/app-provider';
+import { mobileMethodsOf, paymentMethodsOf, tillNumberFor } from '@/lib/shop-config';
+import type { PaymentMethod } from '@/lib/types';
 
 type Mode = 'cash' | 'mobile' | 'credit' | 'split';
 
@@ -29,10 +31,23 @@ export function PaymentSheet({
   busy: boolean;
 }) {
   const t = useTranslations('payment');
+  const { business, show } = useApp();
 
-  const [mode, setMode] = useState<Mode>('cash');
+  // Only what this shop takes (Mipangilio -> Njia za malipo).
+  const takesCash = paymentMethodsOf(business).includes('cash');
+  const mobileMethods = mobileMethodsOf(business);
+  const credit = show('credit');
+  const modes: Mode[] = [
+    ...(takesCash ? (['cash'] as const) : []),
+    ...(mobileMethods.length ? (['mobile'] as const) : []),
+    ...(credit ? (['credit'] as const) : []),
+    ...(takesCash && credit ? (['split'] as const) : []),
+  ];
+
+  const [mode, setMode] = useState<Mode>(modes[0] ?? 'cash');
   const [tendered, setTendered] = useState('');
-  const [provider, setProvider] = useState<PaymentMethod>('mpesa');
+  const [provider, setProvider] = useState<PaymentMethod>(mobileMethods[0] ?? 'mpesa');
+  const till = tillNumberFor(business?.settings, provider);
   const [reference, setReference] = useState('');
   const [splitCash, setSplitCash] = useState('');
   const [customerId, setCustomerId] = useState<string | null>(null);
@@ -67,12 +82,14 @@ export function PaymentSheet({
         <OptionGrid<Mode>
           value={mode}
           onChange={setMode}
-          options={[
-            { value: 'cash', label: t('cash'), icon: <Banknote size={20} /> },
-            { value: 'mobile', label: t('mobile'), icon: <Smartphone size={20} /> },
-            { value: 'credit', label: t('credit'), icon: <BookUser size={20} /> },
-            { value: 'split', label: t('split'), icon: <Split size={20} /> },
-          ]}
+          options={(
+            [
+              { value: 'cash', label: t('cash'), icon: <Banknote size={20} /> },
+              { value: 'mobile', label: t('mobile'), icon: <Smartphone size={20} /> },
+              { value: 'credit', label: t('credit'), icon: <BookUser size={20} /> },
+              { value: 'split', label: t('split'), icon: <Split size={20} /> },
+            ] as const
+          ).filter((option) => modes.includes(option.value))}
         />
 
         {mode === 'cash' && (
@@ -88,8 +105,13 @@ export function PaymentSheet({
             <OptionGrid<PaymentMethod>
               value={provider}
               onChange={setProvider}
-              options={MOBILE_MONEY_METHODS.map((method) => ({ value: method, label: t(`methods.${method}`) }))}
+              options={mobileMethods.map((method) => ({ value: method, label: t(`methods.${method}`) }))}
             />
+            {till ? (
+              <p className="rounded-[10px] bg-brand-tint px-3 py-2.5 text-center font-semibold text-brand-dark">
+                {t('tillNumber', { number: till })}
+              </p>
+            ) : null}
             <Field label={t('reference')} hint={t('referenceHint')}>
               {(id) => (
                 <TextInput id={id} value={reference} autoCapitalize="characters" onChange={(e) => setReference(e.target.value)} />

@@ -22,6 +22,20 @@
       "when": 1790180272346,
       "tag": "0002_product_packs",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791978328846,
+      "tag": "0003_shop_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791978333134,
+      "tag": "0004_accounts",
+      "breakpoints": true
     }
   ]
 }

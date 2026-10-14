@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "Hesabu",
+    "name": "Kitabu",
     "tagline": "Biashara yako, mkononi"
   },
   "common": {
@@ -58,20 +58,33 @@
     "savedOnPhone": "Iko kwenye simu"
   },
   "auth": {
-    "signInTitle": "Ingia kwenye Hesabu",
-    "signInSubtitle": "Weka namba yako ya simu. Tutakutumia namba ya uthibitisho.",
+    "signInTitle": "Ingia kwenye Kitabu",
+    "signInSubtitle": "Weka namba yako ya simu na neno siri lako.",
     "phoneLabel": "Namba ya simu",
     "phonePlaceholder": "0712 345 678",
-    "sendCode": "Nitumie namba",
-    "codeTitle": "Weka namba uliyotumiwa",
-    "codeSubtitle": "Tumetuma namba ya tarakimu 6 kwenda {phone}",
-    "codeLabel": "Namba ya uthibitisho",
-    "verify": "Thibitisha",
-    "resend": "Tuma tena",
-    "changeNumber": "Badilisha namba",
-    "devCodeHint": "Hali ya majaribio: tumia 123456",
+    "passwordLabel": "Neno siri",
+    "passwordHint": "au namba ya kuanzia",
+    "show": "Onyesha",
+    "hide": "Ficha",
+    "signIn": "Ingia",
+    "signingIn": "Inaingia...",
+    "demoHint": "Hili ni toleo la majaribio. Ingia kwa namba yoyote ya simu na namba ya kuanzia {code}.",
+    "forgot": "Umesahau neno siri? Wasiliana nasi",
+    "supportMessage": "Habari, naomba msaada kuingia kwenye Kitabu. Namba yangu ni {phone}.",
+    "newPasswordTitle": "Chagua neno siri lako",
+    "newPasswordSubtitle": "Utalitumia kila unapoingia. Angalau herufi {min}. Usimwambie mtu.",
+    "newPassword": "Neno siri jipya",
+    "confirmPassword": "Rudia neno siri",
+    "savePassword": "Hifadhi na endelea",
     "invalidPhone": "Namba ya simu si sahihi",
-    "invalidCode": "Namba si sahihi. Jaribu tena.",
+    "errors": {
+      "invalidPhone": "Namba ya simu si sahihi",
+      "wrongPassword": "Namba ya simu au neno siri si sahihi.",
+      "offline": "Hakuna mtandao. Kuingia mara ya kwanza kunahitaji mtandao.",
+      "server": "Kuna tatizo upande wetu. Jaribu tena baada ya muda.",
+      "tooShort": "Neno siri liwe na herufi {min} au zaidi.",
+      "mismatch": "Maneno siri hayafanani."
+    },
     "signOut": "Toka",
     "signOutConfirm": "Una uhakika unataka kutoka?"
   },
@@ -90,7 +103,7 @@
     "forgotHelp": "Toka kisha ingia tena kwa namba yako ya simu."
   },
   "onboarding": {
-    "welcomeTitle": "Karibu Hesabu",
+    "welcomeTitle": "Karibu Kitabu",
     "welcomeBody": "Tutajua biashara yako kwa maswali matatu tu. Dakika moja na unaanza kuuza.",
     "start": "Anza",
     "nameTitle": "Biashara yako inaitwa nani?",
@@ -103,6 +116,10 @@
     "starterTitle": "Tumekuwekea bidhaa za kuanzia",
     "starterBody": "Guza kufuta usizohitaji. Bei utaweka baadaye.",
     "types": {
+      "cosmetics": "Vipodozi",
+      "cosmeticsHint": "Losheni, make-up, manukato",
+      "clothes": "Nguo na mapambo",
+      "clothesHint": "Nguo, viatu, mikoba, vito",
       "genge": "Genge / Kibanda",
       "gengeHint": "Mboga, matunda, mkaa barabarani",
       "duka": "Duka",
@@ -174,7 +191,8 @@
     "newCustomer": "Mteja mpya",
     "needCustomer": "Chagua mteja kwa mauzo ya deni",
     "confirm": "Thibitisha malipo",
-    "payFull": "Amelipa yote"
+    "payFull": "Amelipa yote",
+    "tillNumber": "Lipa namba: {number}"
   },
   "receipt": {
     "title": "Risiti",
@@ -479,7 +497,44 @@
     "exportCustomers": "Wateja",
     "exportStock": "Stoo",
     "about": "Kuhusu",
-    "version": "Toleo {version}"
+    "version": "Toleo {version}",
+    "shopType": "Aina ya duka",
+    "shopTypeHint": "Inaamua nini kinaonekana na bidhaa zinaulizwa nini (rangi, saizi...). Taarifa zako hazipotei.",
+    "look": "Muonekano",
+    "colour": "Rangi ya duka",
+    "colourHint": "Rangi inayoonekana kwenye programu na kwenye risiti za wateja.",
+    "address": "Mahali duka lilipo",
+    "addressPlaceholder": "Mf. Kariakoo, Mtaa wa Congo",
+    "payments": "Njia za malipo",
+    "paymentsHint": "Zile tu unazopokea ndizo zitaonekana wakati wa kuuza.",
+    "tillNumber": "Namba ya {method}",
+    "tillHint": "Lipa namba, inaonekana kwenye risiti",
+    "features": "Sehemu za programu",
+    "featuresHint": "Washa unachohitaji tu. Kuzima hakufuti taarifa.",
+    "featureNames": {
+      "stockTracking": "Stoo",
+      "credit": "Madeni ya wateja",
+      "purchases": "Manunuzi",
+      "expenses": "Matumizi",
+      "suppliers": "Wauzaji wa jumla",
+      "waste": "Hasara",
+      "dailyPriceUpdate": "Bei za kila siku",
+      "staff": "Wafanyakazi",
+      "documents": "Ankara na proforma",
+      "vat": "VAT na TIN"
+    },
+    "featureHints": {
+      "stockTracking": "Hesabu kilichobaki, onyo kikikaribia kuisha",
+      "credit": "Kuuza kwa deni na kufuatilia malipo",
+      "purchases": "Kuandika mzigo unaonunua",
+      "expenses": "Nauli, kodi, umeme na mengineyo",
+      "suppliers": "Unaowadai na wanaokudai",
+      "waste": "Kilichoharibika au kupotea",
+      "dailyPriceUpdate": "Kubadilisha bei kila asubuhi",
+      "staff": "Wafanyakazi wenye akaunti zao",
+      "documents": "Ankara, proforma, delivery note",
+      "vat": "Kodi ya VAT kwenye bei na risiti"
+    }
   },
   "more": {
     "title": "Zaidi",
@@ -534,5 +589,71 @@
     "bestSeller": "Inayolipa zaidi",
     "weakest": "Inayolipa kidogo",
     "losing": "Inakula hasara"
+  },
+  "support": {
+    "contact": "Wasiliana nasi WhatsApp",
+    "generalMessage": "Habari, naomba msaada na Kitabu ({shop}).",
+    "pausedTitle": "Akaunti imesimamishwa",
+    "pausedBody": "Duka hili limesimamishwa kwa muda. Rekodi zako ziko salama. Wasiliana nasi kulirudisha.",
+    "pausedMessage": "Habari, Kitabu cha {shop} kimesimamishwa. Naomba kukirudisha.",
+    "notLinkedTitle": "Bado hujaunganishwa na duka",
+    "notLinkedBody": "Umeingia, lakini namba yako bado haijaunganishwa na duka lolote. Wasiliana nasi tukusaidie.",
+    "notLinkedMessage": "Habari, nimeingia kwenye Kitabu lakini sijaunganishwa na duka."
+  },
+  "accounts": {
+    "codeTitle": "Namba ya kuanzia",
+    "codeBody": "Mpe {name} namba hii. Ataingia kwa namba yake ya simu na namba hii, kisha atachagua neno siri lake.",
+    "codeOnce": "Namba hii inaonekana mara moja tu. Ikipotea, utatoa nyingine.",
+    "linkedTitle": "Ameunganishwa",
+    "linkedBody": "{name} tayari ana akaunti ya Kitabu. Ataingia kwa neno siri lake la kawaida.",
+    "codeMessage": "Karibu Kitabu ({shop})!\nFungua: {url}\nNamba ya simu: {phone}\nNamba ya kuanzia: {code}\nUkiingia, chagua neno siri lako.",
+    "linkedMessage": "Umeongezwa kwenye Kitabu cha {shop}. Fungua {url} na uingie kwa neno siri lako.",
+    "sendWhatsapp": "Tuma kwa WhatsApp",
+    "getCode": "Pata namba",
+    "newCode": "Namba mpya",
+    "errors": {
+      "noBackend": "Hili ni toleo la majaribio, halina seva.",
+      "offline": "Hakuna mtandao. Jaribu ukiwa mtandaoni.",
+      "signedOut": "Muda wako umeisha. Toka na uingie tena.",
+      "notOperator": "Akaunti hii haina ruhusa hiyo.",
+      "notAllowed": "Huna ruhusa ya kufanya hivyo.",
+      "noMember": "Mtu huyu bado hajafika kwenye seva. Subiri kidogo, jaribu tena.",
+      "noShop": "Duka hilo halipo.",
+      "badName": "Andika jina la duka.",
+      "badType": "Chagua aina ya duka.",
+      "badPhone": "Namba ya simu si sahihi.",
+      "server": "Kuna tatizo upande wa seva. Jaribu tena."
+    }
+  },
+  "admin": {
+    "title": "Maduka yote",
+    "count": "{count, plural, one {duka 1} other {maduka #}}",
+    "refresh": "Onyesha upya",
+    "newShop": "Duka jipya",
+    "staff": "{count, plural, one {mfanyakazi 1} other {wafanyakazi #}}",
+    "statusActive": "Hai",
+    "statusPaused": "Limesimamishwa",
+    "ownerFirstCode": "Namba ya kuanzia",
+    "ownerNewCode": "Namba mpya ya mwenye duka",
+    "activate": "Rudisha",
+    "pause": "Simamisha",
+    "paused": "Duka limesimamishwa",
+    "activated": "Duka limerudishwa",
+    "empty": "Bado hakuna duka. Bonyeza \"Duka jipya\" kuanza.",
+    "shopName": "Jina la duka",
+    "shopNamePlaceholder": "Mf. Mama Neema Cosmetics",
+    "shopType": "Aina ya duka",
+    "ownerName": "Jina la mwenye duka",
+    "ownerPhone": "Namba ya simu ya mwenye duka",
+    "language": "Lugha",
+    "colour": "Rangi ya duka",
+    "create": "Fungua duka",
+    "resetConfirm": "Kutoa namba mpya kutafuta neno siri la sasa la mwenye {shop}. Endelea?",
+    "pauseConfirm": "Kusimamisha {shop}? Hawataweza kuuza mpaka ulirudishe.",
+    "demoOnly": "Ukurasa huu unafanya kazi tu Kitabu kikiwa kimeunganishwa na Supabase.",
+    "notOperator": "Akaunti hii si ya msimamizi.",
+    "errors": {
+      "name": "Andika jina la duka."
+    }
   }
 }

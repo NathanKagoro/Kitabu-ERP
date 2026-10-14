@@ -15,13 +15,19 @@ import { formatPhone, normalisePhone } from '@/lib/auth/phone';
 import { nowIso } from '@/lib/date';
 import { db } from '@/lib/local/db';
 import { persist } from '@/lib/local/write';
-import type { MemberRole } from '@/lib/types';
+import type { Member, MemberRole } from '@/lib/types';
+import { issueCode } from '@/lib/auth/accounts';
+import { isDemo } from '@/lib/auth/session';
+import { sync } from '@/lib/sync/engine';
+import { SetupCodeSheet, type IssuedCode } from '@/components/setup-code-sheet';
 import { uuidv7 } from '@/lib/uuid';
 
 /**
- * Invites are member rows with no user yet. When that number signs in, the
- * claim_invites() function in the database attaches them -- so an invite can be
- * made offline and still works.
+ * Adding someone makes a member row (works offline), then asks the server for
+ * their first login: a setup code the owner hands over, by WhatsApp or by
+ * reading it out. They sign in with their phone number and that code, and
+ * choose a password. "New code" resets a forgotten password the same way.
+ * In the demo there is no server, so there are no codes.
  */
 export default function StaffPage() {
   const t = useTranslations('staff');
@@ -34,6 +40,28 @@ export default function StaffPage() {
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<MemberRole>('cashier');
   const [error, setError] = useState<string | null>(null);
+  const [issued, setIssued] = useState<IssuedCode | null>(null);
+  const [issuing, setIssuing] = useState<string | null>(null);
+  const tac = useTranslations('accounts');
+  const { business } = useApp();
+  const demo = isDemo();
+
+  /** Sync first (the server must have the row), then ask for a code. */
+  const giveCode = async (m: Member) => {
+    if (!businessId) return;
+    setIssuing(m.id);
+    await sync();
+    let result = await issueCode(businessId, m.id);
+    if (!result.ok && result.error === 'noMember') {
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await sync();
+      result = await issueCode(businessId, m.id);
+    }
+    setIssuing(null);
+    if (!result.ok) return toast(tac(`errors.${result.error}`));
+    void sync();
+    setIssued({ name: m.name ?? null, phone: m.phone ?? null, code: result.code, shop: business?.name ?? '' });
+  };
 
   const members = useLiveQuery(
     async () => (businessId ? (await db().members.where('businessId').equals(businessId).toArray()).filter((m) => m.active) : []),
@@ -45,7 +73,7 @@ export default function StaffPage() {
     if (!normalised) return setError(ta('invalidPhone'));
     if (!businessId) return;
     const at = nowIso();
-    await persist('members', {
+    const row: Member = {
       id: uuidv7(),
       businessId,
       userId: null,
@@ -57,11 +85,13 @@ export default function StaffPage() {
       createdAt: at,
       updatedAt: at,
       deletedAt: null,
-    });
-    toast(t('invited'));
+    };
+    await persist('members', row);
     setOpen(false);
     setName('');
     setPhone('');
+    if (demo) return toast(t('invited'));
+    await giveCode(row);
   };
 
   return (
@@ -83,6 +113,11 @@ export default function StaffPage() {
               <span className="text-sm text-ink-faint">{t(`roleHints.${m.role}`)}</span>
             </span>
             {!m.userId ? <Badge tone="info">{t('invited')}</Badge> : null}
+            {!demo && m.id !== me?.id && m.role !== 'owner' ? (
+              <Button variant="ghost" size="sm" disabled={issuing === m.id} onClick={() => void giveCode(m)}>
+                {issuing === m.id ? tc('loading') : m.userId ? tac('newCode') : tac('getCode')}
+              </Button>
+            ) : null}
             <Badge tone={m.role === 'owner' ? 'brand' : 'plain'}>{t(`roles.${m.role}`)}</Badge>
             {m.id !== me?.id && m.role !== 'owner' ? (
               <Button
@@ -124,6 +159,7 @@ export default function StaffPage() {
           </Button>
         </div>
       </Sheet>
+      <SetupCodeSheet issued={issued} onClose={() => setIssued(null)} />
     </>
   );
 }

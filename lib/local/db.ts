@@ -125,4 +125,8 @@ export const META_KEYS = {
   unlockedAt: 'unlockedAt',
   lastPulledAt: 'lastPulledAt',
   locale: 'locale',
+  /** Signed in with a setup code: the next screen is "choose your password". */
+  mustSetPassword: 'mustSetPassword',
+  /** This login is the operator (creates shops, issues codes). */
+  operator: 'operator',
 } as const;

@@ -3,9 +3,19 @@ import { useTranslations } from 'next-intl';
 import { Logo } from '@/components/brand/logo';
 import { formatTZS } from '@/lib/money';
 import { formatQty } from '@/lib/units';
+import { brandColorOf } from '@/lib/shop-config';
+import type { PaymentMethod } from '@/lib/types';
 
 export interface ReceiptData {
-  business: { name: string; phone?: string | null; tin?: string | null; footer?: string | null };
+  business: {
+    name: string;
+    phone?: string | null;
+    tin?: string | null;
+    footer?: string | null;
+    address?: string | null;
+    brandColor?: string | null;
+    tillNumbers?: Partial<Record<PaymentMethod, string>> | null;
+  };
   sale: { total: number; discount: number; status: string; createdAt: string };
   lines: { description: string; qty: number; unitPrice: number; lineTotal: number }[];
 }
@@ -15,12 +25,21 @@ export function ReceiptView({ receipt }: { receipt: ReceiptData }) {
   const t = useTranslations('receipt');
   const tc = useTranslations('common');
   const tsales = useTranslations('sales');
+  const tpay = useTranslations('payment');
+  const tills = Object.entries(receipt.business.tillNumbers ?? {}).filter(
+    (entry): entry is [PaymentMethod, string] => typeof entry[1] === 'string' && entry[1].trim() !== ''
+  );
   const date = new Date(receipt.sale.createdAt).toLocaleString('sw-TZ', { timeZone: 'Africa/Dar_es_Salaam', dateStyle: 'medium', timeStyle: 'short' });
 
   return (
     <article className="card overflow-hidden">
-      <header className="border-b border-line bg-brand px-5 py-4 text-white">
+      {/* The shop's own colour: a customer opening this link has no theme loaded. */}
+      <header
+        className="border-b border-line px-5 py-4 text-white"
+        style={{ backgroundColor: brandColorOf({ settings: { brandColor: receipt.business.brandColor ?? undefined } }) }}
+      >
         <h1 className="text-xl font-bold">{receipt.business.name}</h1>
+        {receipt.business.address ? <p className="text-sm opacity-90">{receipt.business.address}</p> : null}
         {receipt.business.phone ? <p className="text-sm opacity-90">{receipt.business.phone}</p> : null}
         {receipt.business.tin ? <p className="text-sm opacity-90">TIN {receipt.business.tin}</p> : null}
       </header>
@@ -51,10 +70,20 @@ export function ReceiptView({ receipt }: { receipt: ReceiptData }) {
           <span>{tc('total')}</span>
           <span className="tnum">TSh {formatTZS(receipt.sale.total)}</span>
         </p>
+        {tills.length ? (
+          <ul className="mt-5 space-y-1 rounded-[10px] bg-paper px-3 py-2.5 text-sm">
+            {tills.map(([method, number]) => (
+              <li key={method} className="flex justify-between gap-3">
+                <span className="text-ink-soft">{tpay(`methods.${method}`)}</span>
+                <span className="tnum font-semibold">{number}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <p className="mt-6 text-center text-sm text-ink-soft">{receipt.business.footer || t('thanks')}</p>
         <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-ink-faint">
           <Logo size={16} />
-          Hesabu
+          Kitabu
         </p>
       </div>
     </article>

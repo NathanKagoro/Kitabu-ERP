@@ -4,7 +4,8 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 
 import { db, getMeta, META_KEYS } from '@/lib/local/db';
-import { hasFeature, roleCan, type Feature, type Permission } from '@/lib/modes';
+import { roleCan, type Feature, type Permission } from '@/lib/modes';
+import { shopHasFeature } from '@/lib/shop-config';
 import type { Business, BusinessMode, Member, MemberRole } from '@/lib/types';
 
 interface AppState {
@@ -12,6 +13,10 @@ interface AppState {
   ready: boolean;
   userId: string | null;
   businessId: string | null;
+  /** Signed in with a setup code and has not chosen a password yet. */
+  mustSetPassword: boolean;
+  /** This login is the operator (see /admin). */
+  operator: boolean;
   business: Business | null;
   member: Member | null;
   role: MemberRole;
@@ -25,9 +30,11 @@ const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const state = useLiveQuery(async () => {
-    const [userId, businessId] = await Promise.all([
+    const [userId, businessId, mustSetPassword, operator] = await Promise.all([
       getMeta<string | null>(META_KEYS.userId, null),
       getMeta<string | null>(META_KEYS.activeBusinessId, null),
+      getMeta<boolean>(META_KEYS.mustSetPassword, false),
+      getMeta<boolean>(META_KEYS.operator, false),
     ]);
 
     const business = businessId ? ((await db().businesses.get(businessId)) ?? null) : null;
@@ -40,7 +47,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             .first()) ?? null)
         : null;
 
-    return { userId, businessId, business, member };
+    return { userId, businessId, business, member, mustSetPassword, operator };
   }, []);
 
   const mode: BusinessMode = state?.business?.mode ?? 'genge';
@@ -48,7 +55,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // is mid-onboarding, and treating them as owner avoids a locked-out first run.
   const role: MemberRole = state?.member?.role ?? 'owner';
 
-  const show = useCallback((feature: Feature) => hasFeature(mode, feature), [mode]);
+  const business = state?.business ?? null;
+  const show = useCallback((feature: Feature) => shopHasFeature(business, feature), [business]);
   const can = useCallback((permission: Permission) => roleCan(role, permission), [role]);
 
   const value = useMemo<AppState>(
@@ -56,6 +64,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ready: state !== undefined,
       userId: state?.userId ?? null,
       businessId: state?.businessId ?? null,
+      mustSetPassword: state?.mustSetPassword ?? false,
+      operator: state?.operator ?? false,
       business: state?.business ?? null,
       member: state?.member ?? null,
       role,

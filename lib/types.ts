@@ -6,6 +6,8 @@
 
 export type BusinessMode = 'genge' | 'duka' | 'biashara';
 export type BusinessType =
+  | 'cosmetics'
+  | 'clothes'
   | 'genge'
   | 'duka'
   | 'pharmacy'
@@ -60,7 +62,20 @@ export interface BusinessSettings {
   bankAccount?: string;
   payNumber?: string;
   docCounters?: Partial<Record<DocumentKind, number>>;
+  /** The shop's colour (#rrggbb). Unset: Kitabu green. */
+  brandColor?: string;
+  /** Street / area, printed on receipts and documents. */
+  address?: string;
+  /** Payment methods offered at the till. Unset or empty: all of them. */
+  paymentMethods?: PaymentMethod[];
+  /** Lipa Namba / till number per method, shown on receipts. */
+  tillNumbers?: Partial<Record<PaymentMethod, string>>;
+  /** Per-shop on/off overrides on top of the shop type's preset. */
+  features?: Partial<Record<import('./modes').Feature, boolean>>;
 }
+
+/** Operator-controlled. A paused shop can still read its records but not sell. */
+export type BusinessStatus = 'active' | 'paused';
 
 export interface Business {
   id: string;
@@ -73,6 +88,8 @@ export interface Business {
   logoUrl?: string | null;
   locale: string;
   settings: BusinessSettings;
+  /** Set only by the operator (see /admin). Absent on records from before 0.3. */
+  status?: BusinessStatus;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -108,6 +125,8 @@ export interface Product {
   sku?: string | null;
   barcode?: string | null;
   category?: string | null;
+  /** Shade, size, colour, gauge -- what tells two of the same product apart. */
+  variant?: string | null;
   vatType: VatType;
   sortOrder: number;
   active: boolean;
