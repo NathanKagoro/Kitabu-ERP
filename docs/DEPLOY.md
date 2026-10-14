@@ -24,7 +24,7 @@ In **Authentication → Sign In / Providers**:
 2. **Email** provider: **on**, with **Confirm email: off**. Kitabu turns each phone number into a fixed login address (`255712345678@phone.kitabu.app`) that is never sent mail.
 3. Phone provider: leave off. No SMS is used.
 
-In **Authentication → URL Configuration**, set the **Site URL** to where the app lives (for example `https://nathankagoro.github.io/kitabu-erp/`).
+In **Authentication → URL Configuration**, set the **Site URL** to where the app lives (for example `https://nathankagoro.github.io/Kitabu-ERP/`).
 
 ## 3. Create the database
 

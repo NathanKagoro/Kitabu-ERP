@@ -6,7 +6,7 @@ A business app for Tanzanian shops (cosmetics, clothes, hardware, dukas, genges)
 
 **Plain files plus Supabase.** The app builds to static files hosted free on GitHub Pages; Supabase holds the data and logins. No SMS: shops sign in with a setup code from you, then their own password.
 
-Live demo (data stays in your browser): **https://nathankagoro.github.io/kitabu-erp/**, sign in with any Tanzanian mobile number and the setup code **KTAB-2468**.
+Live demo (data stays in your browser): **https://nathankagoro.github.io/Kitabu-ERP/**, sign in with any Tanzanian mobile number and the setup code **KTAB-2468**.
 
 Deploying and setting up shops: [docs/DEPLOY.md](docs/DEPLOY.md) · What's built: [docs/CHANGELOG.md](docs/CHANGELOG.md) · Original spec: [docs/MVP_SPEC.md](docs/MVP_SPEC.md)
 

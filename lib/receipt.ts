@@ -16,7 +16,7 @@ export function receiptItemsText(lines: readonly ReceiptLine[]): string {
     .join('\n');
 }
 
-/** origin + base path, e.g. https://nathankagoro.github.io/kitabu-erp */
+/** origin + base path, e.g. https://nathankagoro.github.io/Kitabu-ERP */
 export function receiptUrl(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}${BASE_PATH}/r/?t=${token}`;
 }
