@@ -7,7 +7,7 @@ import createNextIntlPlugin from 'next-intl/plugin';
  * runs on the host. The data lives on the phone and syncs to Supabase.
  *
  * NEXT_PUBLIC_BASE_PATH is set when the app is served from a sub-folder, as on
- * GitHub Pages (/kitabu-erp).
+ * GitHub Pages (/Kitabu-ERP).
  */
 const basePath = (process.env.NEXT_PUBLIC_BASE_PATH ?? '').replace(/\/$/, '');
 
