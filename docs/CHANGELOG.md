@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.4.0 — the stock check, customers for offers, and sales by staff (2026-10-17)
+
+Built for the pitch: every visit leads with "N items missing, worth TZS X", and the cosmetics and hardware pitches promise customer offers and per-staff sales.
+
+### Stock check (Zaidi → Hesabu ya stoo, or Bidhaa)
+- **Count a shelf** (`/stoo/hesabu`): pick a category or everything, type what is actually there; each row shows the records and what is missing, and the shortfall in shillings adds up at the bottom as you go. Only the products you type are counted. Typed numbers survive the phone locking.
+- **The report** (`/stoo/ripoti`) leads with the number: "Bidhaa 7 zimepotea, yenye thamani ya TSh 40,000" at cost, then what it would have sold for, then the worst items. Items over the records are listed separately (usually stock that arrived unrecorded). One button sends the summary on WhatsApp.
+- Saving sets the stock to what was counted (one adjustment per product, pointing back at the count).
+- **History** (`/stoo`): when the shop was last counted, a nudge after 14 days, and every past count with its shortfall.
+- New table `stock_counts` (migrations 0005, 0006): the lines are a snapshot, so an old report reads back the same after products are renamed or repriced. Everyone in the shop can read them; only owners and managers record one; never deleted. Maths in `lib/calc/stock-count.ts`, tested.
+
+### The first visit can show a loss
+- Bulk entry has an optional **"Ilitakiwa kuwepo"** (should be there) figure per row, switched on with one toggle: the owner's estimate or the last delivery note. Pasted lists take it as a 7th column.
+- Saving then shows the **first-count report** straight away (what the shelf is short against the owner's figure), with "count again on <date>" two weeks later. The counted shelf is the opening stock either way.
+- Without figures, setup works as before, and the second count two weeks later is the report. Both routes are in the app.
+
+### Customers for WhatsApp offers (Zaidi → Wateja)
+- **Every customer**, not just debtors: number, visits, last visit, total spent. Filters: everyone / this month / not back in 30 days.
+- **Send an offer** (`/wateja/ofa`): write one message with `{jina}` and `{duka}`; tap each name and WhatsApp opens with that person's own message. The list remembers who has been sent one, even when the phone switches to WhatsApp and back. (WhatsApp doesn't let a link message many people at once; this is the honest way.)
+- **Download** the list as phone contacts (.vcf, for a WhatsApp Business broadcast list) or as a spreadsheet.
+- A customer can be marked **"hataki ofa"** (no offers); they stay a customer for credit and receipts. Name and number can now be edited.
+- Customers are captured at the till: an optional customer on any payment ("Andika mteja (si lazima)"), and **"Mhifadhi mteja kwa ofa"** after a sale saves the number while sending the receipt. A number already on the list is never added twice.
+- `customers.no_offers` column (migration 0005).
+
+### Sales by staff (Zaidi → Mauzo kwa mfanyakazi)
+- Today, 7 or 30 days: what each person sold, their share, the cash they took (including debt repayments), and any sales of theirs that were cancelled. Owners and managers only. Uses the "who made it" already recorded on every sale and payment.
+- **Staff logins are now on by default for cosmetics and clothes shops**, as for hardware. Still switchable per shop.
+
+### Each shop type starts with its own things
+- Starter products, categories and pictures for every type: lotions, lipsticks and nail polish for cosmetics; dresses, shoes and bags for clothes; cement, nails and paint for hardware; and so on. No tomatoes outside a genge.
+- The product picture picker shows the trade's pictures first; products typed in bulk get a picture from their category (Losheni → lotion, Viatu → shoe). The name hint follows the trade ("Mf. Nivea Lotion").
+- The **demo shop** now matches the shop's type, and ends on the stock-check story: a clean count a week ago, things missing today.
+
+### Data budget
+The sales screen's first load is 208.7 KB (limit 210). Almost all of the growth is wording: every screen's text ships in one cached file. If the limit gets tight again, the next step is loading each screen's wording with that screen.
+
+### Tests
+179 unit and database tests (from 146): the stock-check maths, saving a count and its corrections through sync, the first-visit report, customer offers and exports, staff totals, starter categories and pictures, and the new database rules.
+
 ## 0.3.0 — Kitabu: one app, many shops (2026-10-14)
 
 Hesabu becomes **Kitabu**, a template an operator sets up and customises per shop, aimed first at cosmetics, clothes and hardware shops in Dar. The code before this release is on the `hesabu-original` branch. Nothing here adds a dependency.

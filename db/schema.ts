@@ -243,6 +243,8 @@ export const customers = pgTable(
     name: text('name').notNull(),
     phone: text('phone'),
     note: text('note'),
+    /** Asked not to get offers on WhatsApp. Still on the list for credit and receipts. */
+    noOffers: boolean('no_offers').notNull().default(false),
     ...rowStamps,
   },
   (t) => [index('customers_business_idx').on(t.businessId)]
@@ -460,6 +462,43 @@ export const dayClosings = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [unique('day_closings_day_uniq').on(t.businessId, t.date)]
+);
+
+/**
+ * A stock check: a shelf (or the whole shop) counted against what the records
+ * say. The lines are kept as a snapshot (jsonb) so a report reads back exactly
+ * as it was the day it was counted, even after products are renamed or
+ * repriced. The totals are computed on the phone by lib/calc/stock-count.ts.
+ * Counted stock is applied to the ledger as 'adjust' movements with
+ * ref_id = this id.
+ */
+export const stockCounts = pgTable(
+  'stock_counts',
+  {
+    id: uuid('id').primaryKey(),
+    /** Set by the database on every write; the pull cursor. Never trusted from a phone clock. */
+    syncedAt: timestamp('synced_at', { withTimezone: true }).defaultNow().notNull(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id, { onDelete: 'cascade' }),
+    /** 'check' against the records, or 'opening' against the owner's estimate on day one. */
+    kind: text('kind').notNull().default('check'),
+    /** Which shelf or category was counted; null for the whole shop. */
+    scope: text('scope'),
+    itemsCounted: bigint('items_counted', { mode: 'number' }).notNull().default(0),
+    linesShort: bigint('lines_short', { mode: 'number' }).notNull().default(0),
+    unitsShort: qtyCol('units_short').notNull().default(0),
+    valueShortCost: money('value_short_cost').notNull().default(0),
+    valueShortPrice: money('value_short_price').notNull().default(0),
+    unitsOver: qtyCol('units_over').notNull().default(0),
+    valueOverCost: money('value_over_cost').notNull().default(0),
+    lines: jsonb('lines').$type<unknown[]>().notNull().default([]),
+    note: text('note'),
+    createdBy: uuid('created_by'),
+    clientCreatedAt: timestamp('client_created_at', { withTimezone: true }).notNull(),
+    ...rowStamps,
+  },
+  (t) => [index('stock_counts_business_idx').on(t.businessId, t.clientCreatedAt)]
 );
 
 export const documents = pgTable(

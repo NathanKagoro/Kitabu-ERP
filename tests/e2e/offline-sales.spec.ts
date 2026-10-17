@@ -120,10 +120,10 @@ async function firstSignIn(page: Page) {
   await page.getByLabel('Jina la bidhaa').fill('Lipstick');
   await page.getByLabel('Rangi / shade').fill('Red 01');
   await page.getByLabel('Bei ya kuuza').fill('8000');
-  await page.getByLabel('Idadi').fill('12');
+  await page.getByLabel('Idadi', { exact: true }).fill('12');
   await page.getByRole('button', { name: 'Rangi nyingine' }).click();
   await page.getByLabel('Rangi / shade').nth(1).fill('Nude 03');
-  await page.getByLabel('Idadi').nth(1).fill('5');
+  await page.getByLabel('Idadi', { exact: true }).nth(1).fill('5');
   await page.getByRole('button', { name: /Hifadhi zote \(2\)/ }).click();
   await page.waitForURL(/\/mauzo\/?$/);
 }

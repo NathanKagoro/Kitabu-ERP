@@ -46,6 +46,12 @@ describe('features: shop override, then preset, then mode', () => {
     expect(shopHasFeature(shop({ type: 'genge', mode: 'genge' }), 'stockTracking')).toBe(false);
   });
 
+  it('cosmetics and clothes shops get staff logins without being biashara', () => {
+    expect(shopHasFeature(shop(), 'staff')).toBe(true);
+    expect(shopHasFeature(shop({ type: 'clothes' }), 'staff')).toBe(true);
+    expect(shopHasFeature(shop({ type: 'duka' }), 'staff')).toBe(false);
+  });
+
   it('the preset can switch a mode feature off', () => {
     // A cosmetics shop does not reprice every morning like a genge.
     expect(shopHasFeature(shop(), 'dailyPriceUpdate')).toBe(false);
@@ -55,7 +61,8 @@ describe('features: shop override, then preset, then mode', () => {
   it('the shop’s own choice wins over both', () => {
     expect(shopHasFeature(shop({ settings: { features: { dailyPriceUpdate: true } } }), 'dailyPriceUpdate')).toBe(true);
     expect(shopHasFeature(shop({ settings: { features: { credit: false } } }), 'credit')).toBe(false);
-    expect(shopHasFeature(shop({ settings: { features: { staff: true } } }), 'staff')).toBe(true);
+    expect(shopHasFeature(shop({ type: 'duka', settings: { features: { staff: true } } }), 'staff')).toBe(true);
+    expect(shopHasFeature(shop({ settings: { features: { staff: false } } }), 'staff')).toBe(false);
   });
 });
 
@@ -89,5 +96,26 @@ describe('look and status', () => {
     expect(isPaused(shop({ status: 'paused' }))).toBe(true);
     expect(isPaused(shop({ status: 'active' }))).toBe(false);
     expect(isPaused(shop())).toBe(false);
+  });
+});
+
+describe('starter products and pictures fit the trade', () => {
+  it('every starter category is one of that type’s preset categories', async () => {
+    const { STARTER_PRODUCTS } = await import('@/lib/onboarding/starter-products');
+    for (const type of SHOP_TYPES) {
+      const allowed = new Set(PRESETS[type].categories);
+      for (const item of STARTER_PRODUCTS[type]) {
+        if (item.category && allowed.size) expect(allowed, `${type}: ${item.category}`).toContain(item.category);
+      }
+    }
+  });
+
+  it('only a genge gets fruit and vegetable pictures first', async () => {
+    const { iconsFor, iconFor } = await import('@/lib/onboarding/starter-products');
+    expect(iconsFor('cosmetics').slice(0, 5)).not.toContain('🍅');
+    expect(iconsFor('genge')[0]).toBe('🍅');
+    expect(iconFor('cosmetics', 'Losheni')).toBe('🧴');
+    expect(iconFor('clothes', 'viatu')).toBe('👟');
+    expect(iconFor('hardware', 'Kitu kipya')).toBe('🔧');
   });
 });

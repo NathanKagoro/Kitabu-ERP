@@ -2,6 +2,7 @@
 
 import {
   Building2,
+  ClipboardCheck,
   ChevronRight,
   FileText,
   LogOut,
@@ -47,6 +48,7 @@ export default function MorePage() {
       title: t('more.sections.shop'),
       items: [
         { href: '/bidhaa', label: t('products.title'), icon: <Package size={22} />, feature: 'products' },
+        { href: '/stoo', label: t('stockCheck.title'), icon: <ClipboardCheck size={22} />, feature: 'stockTracking', permission: 'countStock' },
         { href: '/bei', label: t('prices.title'), icon: <Tag size={22} />, feature: 'dailyPriceUpdate', permission: 'managePrices' },
         { href: '/hasara', label: t('waste.title'), icon: <Trash size={22} />, feature: 'waste', permission: 'manageProducts' },
       ],
@@ -54,6 +56,7 @@ export default function MorePage() {
     {
       title: t('more.sections.money'),
       items: [
+        { href: '/wateja', label: t('clients.title'), icon: <Users size={22} />, permission: 'manageCustomers' },
         { href: '/matumizi', label: t('expenses.title'), icon: <Receipt size={22} />, feature: 'expenses', permission: 'recordExpense' },
         { href: '/faida', label: t('profit.title'), icon: <TrendingUp size={22} />, permission: 'viewProfit' },
         { href: '/wauzaji', label: t('suppliers.title'), icon: <Truck size={22} />, feature: 'suppliers', permission: 'recordPurchase' },
@@ -64,6 +67,7 @@ export default function MorePage() {
       items: [
         { href: '/hati', label: t('documents.title'), icon: <FileText size={22} />, feature: 'documents', permission: 'manageDocuments' },
         { href: '/wafanyakazi', label: t('staff.title'), icon: <Users size={22} />, feature: 'staff', permission: 'manageStaff' },
+        { href: '/wafanyakazi/mauzo', label: t('staffSales.title'), icon: <TrendingUp size={22} />, feature: 'staff', permission: 'viewStaffSales' },
       ],
     },
     {

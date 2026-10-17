@@ -1,7 +1,8 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { UserPlus } from '@/components/icons';
+import { TrendingUp, UserPlus } from '@/components/icons';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -34,7 +35,8 @@ export default function StaffPage() {
   const tc = useTranslations('common');
   const ta = useTranslations('auth');
   const toast = useToast();
-  const { businessId, member: me } = useApp();
+  const { businessId, member: me, can } = useApp();
+  const tss = useTranslations('staffSales');
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -104,6 +106,17 @@ export default function StaffPage() {
           </Button>
         }
       />
+      {members && members.length > 1 && can('viewStaffSales') ? (
+        <div className="px-3 pt-3">
+          <Link
+            href="/wafanyakazi/mauzo"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface font-semibold text-brand active:bg-paper"
+          >
+            <TrendingUp size={20} />
+            {tss('title')}
+          </Link>
+        </div>
+      ) : null}
       {members && members.length <= 1 ? <EmptyState title={t('empty')} /> : null}
       <ul className="divide-y divide-line">
         {members?.map((m) => (

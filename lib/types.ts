@@ -185,6 +185,8 @@ export interface Customer {
   name: string;
   phone?: string | null;
   note?: string | null;
+  /** Asked not to get offers. Still a customer for credit and receipts. */
+  noOffers?: boolean;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -315,6 +317,40 @@ export interface DayClosing {
   note?: string | null;
   createdBy?: string | null;
   createdAt: string;
+}
+
+export type StockCountKind = 'check' | 'opening';
+
+/** One line of a stock check, frozen as it was on the day (see lib/calc/stock-count.ts). */
+export interface StockCountLine {
+  productId: string;
+  name: string;
+  expected: number;
+  counted: number;
+  unitCost: number | null;
+  unitPrice: number;
+}
+
+export interface StockCount {
+  id: string;
+  businessId: string;
+  kind: StockCountKind;
+  /** The shelf or category counted; null for everything. */
+  scope?: string | null;
+  itemsCounted: number;
+  linesShort: number;
+  unitsShort: number;
+  valueShortCost: number;
+  valueShortPrice: number;
+  unitsOver: number;
+  valueOverCost: number;
+  lines: StockCountLine[];
+  note?: string | null;
+  createdBy?: string | null;
+  clientCreatedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
 }
 
 export interface BusinessDocument {

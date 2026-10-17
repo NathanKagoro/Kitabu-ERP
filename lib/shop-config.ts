@@ -76,14 +76,15 @@ export const PRESETS: Record<BusinessType, ShopPreset> = {
     variantLabel: 'shade',
     categories: ['Mafuta ya ngozi', 'Losheni', 'Sabuni', 'Manukato', 'Make-up', 'Nywele', 'Kucha', 'Vipodozi vingine'],
     defaultUnit: 'kipande',
-    features: { dailyPriceUpdate: false },
+    // Most cosmetics shops have an assistant at the counter.
+    features: { dailyPriceUpdate: false, staff: true },
   },
   clothes: {
     productFields: ['category', 'variant', 'barcode'],
     variantLabel: 'sizeColour',
     categories: ['Magauni', 'Mashati', 'Suruali', 'Viatu', 'Mikoba', 'Vito', 'Nguo za watoto', 'Vingine'],
     defaultUnit: 'kipande',
-    features: { dailyPriceUpdate: false },
+    features: { dailyPriceUpdate: false, staff: true },
   },
   hardware: {
     productFields: ['category', 'variant', 'barcode'],
@@ -110,7 +111,7 @@ export const PRESETS: Record<BusinessType, ShopPreset> = {
     categories: ['Vyakula', 'Vinywaji', 'Usafi', 'Vingine'],
     defaultUnit: 'kipande',
   },
-  services: { productFields: ['category'], variantLabel: null, categories: [], defaultUnit: 'kipande' },
+  services: { productFields: ['category'], variantLabel: null, categories: ['Huduma'], defaultUnit: 'kipande' },
   other: { productFields: ['category', 'variant'], variantLabel: 'spec', categories: [], defaultUnit: 'kipande' },
 };
 

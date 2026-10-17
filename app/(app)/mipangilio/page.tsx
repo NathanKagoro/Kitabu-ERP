@@ -33,6 +33,7 @@ function SettingsForm({ initial }: { initial: Business }) {
   const t = useTranslations('settings');
   const tc = useTranslations('common');
   const td = useTranslations('demo');
+  const to = useTranslations('onboarding');
   const tpin = useTranslations('pin');
   const locale = useLocale();
   const setLocale = useSetLocale();
@@ -157,7 +158,7 @@ function SettingsForm({ initial }: { initial: Business }) {
               void (async () => {
                 if (!userId) return;
                 setDemoBusy(true);
-                await createDemoBusiness(userId, td('businessName'), locale);
+                await createDemoBusiness(userId, td('businessName', { type: to(`types.${initial.type}`) }), locale, initial.type);
                 toast(td('created'));
                 router.replace('/hesabu');
               })()

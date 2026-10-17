@@ -300,6 +300,10 @@ export interface NewProductRow {
   cost?: number | null;
   /** Counted on the shelf today; becomes the opening stock. */
   qty?: number | null;
+  /** The owner's estimate or the delivery note, for the first-visit report. */
+  expected?: number | null;
+  /** A picture for the till tile; defaults to the batch's icon. */
+  icon?: string | null;
 }
 
 /**
@@ -314,9 +318,9 @@ export async function addProductsInBulk(
     trackStock: boolean;
     icon?: string | null;
   }
-): Promise<number> {
+): Promise<Product[]> {
   const rows = input.rows.filter((row) => row.name.trim());
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return [];
   const at = nowIso();
   const start = await db().products.where('businessId').equals(input.businessId).count();
 
@@ -337,7 +341,7 @@ export async function addProductsInBulk(
       cost,
       trackStock: input.trackStock,
       lowStockLevel: null,
-      icon: input.icon ?? '📦',
+      icon: row.icon ?? input.icon ?? '📦',
       photoUrl: null,
       sku: null,
       barcode: null,
@@ -369,7 +373,7 @@ export async function addProductsInBulk(
     { table: 'products', rows: products },
     { table: 'stockMovements', rows: movements },
   ]);
-  return products.length;
+  return products;
 }
 
 export async function archiveProduct(product: Product): Promise<void> {

@@ -330,3 +330,45 @@ describe('accounts are made by the operator', () => {
     ).rejects.toThrow(/permission denied/);
   });
 });
+
+describe('stock counts', () => {
+  const count = (business: string) => [
+    id(),
+    business,
+    JSON.stringify([{ productId: 'p', name: 'Lipstick', expected: 12, counted: 9, unitCost: 5500, unitPrice: 8000 }]),
+  ];
+  const insert = `INSERT INTO stock_counts (id, business_id, kind, lines_short, units_short, value_short_cost, lines, client_created_at)
+                  VALUES ($1, $2, 'check', 1, 3, 16500, $3::jsonb, now())`;
+
+  it('an owner records a count; the whole shop can read it', async () => {
+    await as(USER_A, () => pg.query(insert, count(BIZ_A)));
+    // The cashier claimed an invite to business A earlier in this file.
+    const seen = await as(CASHIER, () => rows('SELECT value_short_cost, units_short FROM stock_counts'));
+    expect(seen).toEqual([{ value_short_cost: 16500, units_short: '3.000' }]);
+  });
+
+  it('a cashier cannot record one, and another business cannot see any', async () => {
+    await expect(as(CASHIER, () => pg.query(insert, count(BIZ_A)))).rejects.toThrow(/row-level security/);
+    expect(await as(USER_B, () => rows('SELECT * FROM stock_counts'))).toHaveLength(0);
+    await expect(as(USER_B, () => pg.query(insert, count(BIZ_A)))).rejects.toThrow(/row-level security/);
+  });
+
+  it('cannot be hard-deleted, and only knows two kinds', async () => {
+    const deleted = await as(USER_A, () => pg.query('DELETE FROM stock_counts'));
+    expect(deleted.affectedRows ?? 0).toBe(0);
+    await expect(
+      as(USER_A, () =>
+        pg.query(`INSERT INTO stock_counts (id, business_id, kind, client_created_at) VALUES ($1, $2, 'guess', now())`, [id(), BIZ_A])
+      )
+    ).rejects.toThrow(/stock_counts_kind_check/);
+  });
+});
+
+describe('customers and offers', () => {
+  it('a customer can be marked "no offers" by anyone in the shop', async () => {
+    const customer = id();
+    await as(USER_A, () => pg.query(`INSERT INTO customers (id, business_id, name, phone) VALUES ($1, $2, 'Asha', '+255712000222')`, [customer, BIZ_A]));
+    await as(CASHIER, () => pg.query(`UPDATE customers SET no_offers = true WHERE id = $1`, [customer]));
+    expect(await as(USER_A, () => rows('SELECT no_offers FROM customers WHERE id = $1', [customer]))).toEqual([{ no_offers: true }]);
+  });
+});

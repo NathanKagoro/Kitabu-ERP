@@ -14,6 +14,7 @@ import { saveProduct, saveProductPacks } from '@/lib/local/actions';
 import { db } from '@/lib/local/db';
 import { uuidv7 } from '@/lib/uuid';
 import { presetOf } from '@/lib/shop-config';
+import { iconFor } from '@/lib/onboarding/starter-products';
 
 /**
  * ?kutoka=<id> starts from an existing product -- "another shade of this" --
@@ -49,7 +50,7 @@ function NewProductPage() {
         initial={
           sibling
             ? { ...draftFrom({ ...sibling, variant: null, barcode: null, sku: null }), packs: [] }
-            : draftFrom(null, [], { unit: presetOf(business).defaultUnit, trackStock: show('stockTracking') })
+            : draftFrom(null, [], { unit: presetOf(business).defaultUnit, trackStock: show('stockTracking'), icon: iconFor(business?.type) })
         }
         submitLabel={tc('save')}
         onSubmit={async (draft) => {

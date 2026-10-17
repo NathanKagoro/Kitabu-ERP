@@ -27,6 +27,7 @@ export const PG_TABLE: Record<string, string> = {
   dayClosings: 'day_closings',
   documents: 'documents',
   documentLines: 'document_lines',
+  stockCounts: 'stock_counts',
 };
 
 export type SyncedTable = keyof typeof PG_TABLE;

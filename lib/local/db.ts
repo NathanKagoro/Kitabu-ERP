@@ -17,6 +17,7 @@ import type {
   PurchaseLine,
   Sale,
   SaleLine,
+  StockCount,
   StockMovement,
   Supplier,
   WasteEvent,
@@ -55,6 +56,7 @@ export class HesabuDB extends Dexie {
   dayClosings!: EntityTable<DayClosing, 'id'>;
   documents!: EntityTable<BusinessDocument, 'id'>;
   documentLines!: EntityTable<DocumentLine, 'id'>;
+  stockCounts!: EntityTable<StockCount, 'id'>;
   outbox!: EntityTable<OutboxEntry, 'seq'>;
   meta!: EntityTable<MetaRow, 'key'>;
 
@@ -91,6 +93,11 @@ export class HesabuDB extends Dexie {
     // data keeps it: Dexie only creates the new store.
     this.version(2).stores({
       productPacks: 'id, businessId, productId',
+    });
+
+    // v3: stock-check reports.
+    this.version(3).stores({
+      stockCounts: 'id, businessId, clientCreatedAt, [businessId+clientCreatedAt]',
     });
   }
 }

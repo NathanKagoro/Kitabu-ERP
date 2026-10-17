@@ -17,7 +17,9 @@ import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { customerBalance, isCreditCharge, isDebtRepayment, lastPaymentByCustomer } from '@/lib/calc/credit';
 import { cn } from '@/lib/cn';
-import { recordDebtPayment } from '@/lib/local/actions';
+import { recordDebtPayment, updateCustomer } from '@/lib/local/actions';
+import { SwitchRow } from '@/components/ui/switch';
+import { normalisePhone } from '@/lib/auth/phone';
 import { db } from '@/lib/local/db';
 import { formatTZS } from '@/lib/money';
 import { fillTemplate, whatsappLink } from '@/lib/receipt';
@@ -45,6 +47,12 @@ function CustomerPage() {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PaymentMethod>(() => paymentMethodsOf(business)[0] ?? 'cash');
   const [reference, setReference] = useState('');
+  const tcl = useTranslations('clients');
+  const ta = useTranslations('auth');
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
 
   const data = useLiveQuery(async () => {
     const customer = await db().customers.get(id);
@@ -120,6 +128,25 @@ function CustomerPage() {
         </div>
       </section>
 
+      <section className="card mx-3 mb-3 overflow-hidden">
+        <SwitchRow
+          checked={!customer.noOffers}
+          onChange={(on) => void updateCustomer({ ...customer, noOffers: !on }).then(() => toast(tc('saved')))}
+          label={tcl('getsOffers')}
+          hint={customer.phone ? tcl('getsOffersHint') : t('addPhoneToRemind')}
+        />
+        <button
+          onClick={() => {
+            setEditName(customer.name);
+            setEditPhone(customer.phone ?? '');
+            setEditing(true);
+          }}
+          className="flex min-h-14 w-full items-center border-t border-line px-4 text-left font-semibold text-brand active:bg-paper"
+        >
+          {tcl('editDetails')}
+        </button>
+      </section>
+
       <h2 className="px-4 pt-2 pb-1.5 text-sm font-bold text-ink-soft">{t('history')}</h2>
       <ul className="card mx-3 divide-y divide-line">
         {history.map(({ payment, charge, running }) => (
@@ -136,6 +163,32 @@ function CustomerPage() {
         ))}
         {history.length === 0 ? <li className="px-4 py-6 text-center text-sm text-ink-faint">{tc('nothingYet')}</li> : null}
       </ul>
+
+      <Sheet open={editing} onClose={() => setEditing(false)} title={tcl('editDetails')}>
+        <div className="space-y-3 p-4">
+          <Field label={tc('name')}>{(fid) => <TextInput id={fid} value={editName} onChange={(e) => setEditName(e.target.value)} />}</Field>
+          <Field label={tc('phone')} error={editError}>
+            {(fid) => (
+              <TextInput id={fid} type="tel" inputMode="tel" value={editPhone} onChange={(e) => { setEditPhone(e.target.value); setEditError(null); }} />
+            )}
+          </Field>
+          <Button
+            size="lg"
+            block
+            disabled={!editName.trim()}
+            onClick={() =>
+              void (async () => {
+                if (editPhone.trim() && !normalisePhone(editPhone)) return setEditError(ta('invalidPhone'));
+                await updateCustomer({ ...customer, name: editName.trim(), phone: editPhone.trim() ? normalisePhone(editPhone) : null });
+                setEditing(false);
+                toast(tc('saved'));
+              })()
+            }
+          >
+            {tc('save')}
+          </Button>
+        </div>
+      </Sheet>
 
       <Sheet open={paying} onClose={() => setPaying(false)} title={t('paymentAmount')}>
         <div className="space-y-4 p-4">

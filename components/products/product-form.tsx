@@ -1,5 +1,7 @@
 'use client';
 
+import { STARTER_PRODUCTS } from '@/lib/onboarding/starter-products';
+
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -9,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AmountInput, Field, TextInput } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
 import { parseTZS } from '@/lib/money';
-import { PRODUCT_ICONS } from '@/lib/onboarding/starter-products';
+import { iconsFor } from '@/lib/onboarding/starter-products';
 import { PRODUCT_UNITS } from '@/lib/units';
 import { useProducts } from '@/lib/local/queries';
 import { categoriesOf } from '@/lib/products';
@@ -42,7 +44,7 @@ export interface ProductDraft {
 export function draftFrom(
   product?: Partial<Product> | null,
   packs: readonly ProductPack[] = [],
-  defaults: Partial<Pick<ProductDraft, 'unit' | 'trackStock'>> = {}
+  defaults: Partial<Pick<ProductDraft, 'unit' | 'trackStock' | 'icon'>> = {}
 ): ProductDraft {
   return {
     packs: packs
@@ -56,7 +58,7 @@ export function draftFrom(
     cost: product?.cost ?? null,
     trackStock: product?.trackStock ?? defaults.trackStock ?? false,
     lowStockLevel: product?.lowStockLevel ?? null,
-    icon: product?.icon ?? '📦',
+    icon: product?.icon ?? defaults.icon ?? '📦',
     sku: product?.sku ?? null,
     barcode: product?.barcode ?? null,
     category: product?.category ?? null,
@@ -111,7 +113,7 @@ export function ProductForm({
   return (
     <div className="space-y-5 p-4">
       <Field label={t('nameLabel')} error={error}>
-        {(id) => <TextInput id={id} value={draft.name} placeholder={t('namePlaceholder')} onChange={(e) => set('name', e.target.value)} />}
+        {(id) => <TextInput id={id} value={draft.name} placeholder={t('namePlaceholder', { example: STARTER_PRODUCTS[business?.type ?? 'other']?.[0]?.name ?? '' })} onChange={(e) => set('name', e.target.value)} />}
       </Field>
 
       {asks('variant') && preset.variantLabel && (
@@ -150,7 +152,7 @@ export function ProductForm({
       <div className="space-y-1.5">
         <p className="text-sm font-semibold text-ink-soft">{t('iconLabel')}</p>
         <div className="flex flex-wrap gap-1.5">
-          {PRODUCT_ICONS.map((icon) => (
+          {iconsFor(business?.type).slice(0, 36).map((icon) => (
             <button
               key={icon}
               onClick={() => set('icon', icon)}

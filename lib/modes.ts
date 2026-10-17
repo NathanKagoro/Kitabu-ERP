@@ -99,6 +99,8 @@ export type Permission =
   | 'manageCustomers'
   | 'manageDocuments'
   | 'closeDay'
+  | 'countStock'
+  | 'viewStaffSales'
   | 'manageSettings'
   | 'manageStaff';
 
@@ -114,6 +116,8 @@ const ROLE_PERMISSIONS: Record<MemberRole, ReadonlySet<Permission>> = {
     'manageCustomers',
     'manageDocuments',
     'closeDay',
+    'countStock',
+    'viewStaffSales',
     'manageSettings',
     'manageStaff',
   ]),
@@ -128,6 +132,8 @@ const ROLE_PERMISSIONS: Record<MemberRole, ReadonlySet<Permission>> = {
     'manageCustomers',
     'manageDocuments',
     'closeDay',
+    'countStock',
+    'viewStaffSales',
   ]),
   cashier: new Set<Permission>(['sell', 'recordExpense', 'manageCustomers']),
 };

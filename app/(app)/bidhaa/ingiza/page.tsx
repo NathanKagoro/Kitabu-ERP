@@ -1,5 +1,7 @@
 'use client';
 
+import { STARTER_PRODUCTS } from '@/lib/onboarding/starter-products';
+
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -10,13 +12,15 @@ import { Copy, Plus, X } from '@/components/icons';
 import { EmptyState, OptionGrid, PageHeader } from '@/components/ui/bits';
 import { Button } from '@/components/ui/button';
 import { AmountInput, Field, TextArea, TextInput } from '@/components/ui/field';
+import { SwitchRow } from '@/components/ui/switch';
 import { useToast } from '@/components/ui/toast';
-import { addProductsInBulk } from '@/lib/local/actions';
+import { addProductsWithOpeningCount } from '@/lib/local/stock-count';
 import { db } from '@/lib/local/db';
 import { useProducts } from '@/lib/local/queries';
 import { formatTZS, parseTZS } from '@/lib/money';
 import { categoriesOf, parseBulkText } from '@/lib/products';
 import { presetOf } from '@/lib/shop-config';
+import { iconFor } from '@/lib/onboarding/starter-products';
 import { uuidv7 } from '@/lib/uuid';
 
 /**
@@ -36,6 +40,8 @@ interface Row {
   price: string;
   cost: string;
   qty: string;
+  /** What should be there: the owner's estimate or the delivery note. */
+  expected: string;
 }
 
 const emptyRow = (from?: Partial<Row>): Row => ({
@@ -46,6 +52,7 @@ const emptyRow = (from?: Partial<Row>): Row => ({
   price: '',
   cost: '',
   qty: '',
+  expected: '',
   ...from,
 });
 
@@ -78,6 +85,9 @@ function BulkEntryPage() {
   const [rows, setRows] = useState<Row[]>(() => [emptyRow()]);
   const [pasted, setPasted] = useState('');
   const [saving, setSaving] = useState(false);
+  // Off by default: the figure only matters on the first visit, when the owner
+  // has an estimate or the last delivery note to compare the shelf against.
+  const [withExpected, setWithExpected] = useState(false);
 
   if (!can('manageProducts')) {
     return (
@@ -110,8 +120,10 @@ function BulkEntryPage() {
         price: p.price != null ? String(p.price) : '',
         cost: p.cost != null ? String(p.cost) : '',
         qty: p.qty != null ? String(p.qty) : '',
+        expected: p.expected != null ? String(p.expected) : '',
       })
     );
+    if (parsed.some((p) => p.expected != null)) setWithExpected(true);
     setRows((list) => [...list.filter((row) => row.name.trim()), ...fresh]);
     setPasted('');
     setTab('type');
@@ -124,7 +136,11 @@ function BulkEntryPage() {
   const save = async () => {
     if (!businessId || ready.length === 0) return;
     setSaving(true);
-    const count = await addProductsInBulk({
+    const parseQty = (value: string) => {
+      const n = Number(value.replace(',', '.'));
+      return value.trim() && Number.isFinite(n) && n >= 0 ? n : null;
+    };
+    const { products, count } = await addProductsWithOpeningCount({
       businessId,
       userId,
       unit: preset.defaultUnit,
@@ -133,16 +149,21 @@ function BulkEntryPage() {
         name: row.name,
         variant: asksVariant ? row.variant : null,
         category: asksCategory ? row.category : null,
+        // A fitting picture from the category ("Losheni" -> lotion), else the trade's.
+        icon: iconFor(business?.type, asksCategory ? row.category : null),
         price: parseTZS(row.price) ?? 0,
         cost: parseTZS(row.cost),
-        qty: row.qty.trim() ? Number(row.qty.replace(',', '.')) : null,
+        qty: parseQty(row.qty),
+        expected: withExpected && tracksStock ? parseQty(row.expected) : null,
       })),
     });
     setSaving(false);
-    toast(tb('saved', { count }));
+    toast(tb('saved', { count: products.length }));
+    // Figures were given: the first thing to show is what is missing.
+    if (count) return router.replace(`/stoo/ripoti?id=${count.id}${firstRun ? '&anza=1' : ''}`);
     if (!firstRun) return router.back();
-    const products = await db().products.where('businessId').equals(businessId).filter((p) => p.active).toArray();
-    router.replace(products.some((p) => !p.price) ? '/bei?anza=1' : '/mauzo');
+    const all = await db().products.where('businessId').equals(businessId).filter((p) => p.active).toArray();
+    router.replace(all.some((p) => !p.price) ? '/bei?anza=1' : '/mauzo');
   };
 
   const variantName = asksVariant && preset.variantLabel ? t(`variantLabels.${preset.variantLabel}`) : '';
@@ -178,6 +199,16 @@ function BulkEntryPage() {
                 <option key={name} value={name} />
               ))}
             </datalist>
+            {tracksStock && (
+              <div className="card overflow-hidden">
+                <SwitchRow
+                  checked={withExpected}
+                  onChange={setWithExpected}
+                  label={tb('withExpected')}
+                  hint={tb('withExpectedHint')}
+                />
+              </div>
+            )}
             <ol className="space-y-3">
               {rows.map((row, index) => (
                 <li key={row.key} className="card space-y-3 p-3">
@@ -197,7 +228,7 @@ function BulkEntryPage() {
                     </Button>
                   </div>
                   <Field label={t('nameLabel')}>
-                    {(id) => <TextInput id={id} value={row.name} placeholder={t('namePlaceholder')} onChange={(e) => update(row.key, { name: e.target.value })} />}
+                    {(id) => <TextInput id={id} value={row.name} placeholder={t('namePlaceholder', { example: STARTER_PRODUCTS[business?.type ?? 'other']?.[0]?.name ?? '' })} onChange={(e) => update(row.key, { name: e.target.value })} />}
                   </Field>
                   {(asksVariant || asksCategory) && (
                     <div className="grid grid-cols-2 gap-2">
@@ -237,6 +268,11 @@ function BulkEntryPage() {
                       </Field>
                     )}
                   </div>
+                  {withExpected && tracksStock && (
+                    <Field label={tb('expectedLabel')} hint={tb('expectedHint')}>
+                      {(id) => <AmountInput id={id} value={row.expected} onChange={(e) => update(row.key, { expected: e.target.value })} />}
+                    </Field>
+                  )}
                 </li>
               ))}
             </ol>

@@ -10,54 +10,46 @@ import {
   saveProduct,
   saveProductPacks,
 } from './local/actions';
+import { recordStockCount } from './local/stock-count';
 import { packToUnits } from './calc/packs';
+import { stockByProduct } from './calc/stock';
 import { addDays, businessDay, dayBounds } from './date';
 import { db } from './local/db';
 import { loadRange } from './local/queries';
 import { createBusiness } from './onboarding/create-business';
-import type { ExpenseCategory, Product } from './types';
+import { STARTER_PRODUCTS, type StarterProduct } from './onboarding/starter-products';
+import { productLabel } from './products';
+import type { BusinessType, ExpenseCategory, Product } from './types';
 
 /**
- * Two weeks of a plausible Sinza genge, recorded through the same domain
- * actions the app itself uses -- so the demo exercises the real code paths,
- * and a number that looks wrong in a demo is a real bug.
+ * Two weeks of a plausible shop of the same kind as the one being shown -- a
+ * cosmetics shop gets lotions and lipsticks, a hardware shop cement and nails
+ * -- recorded through the same domain actions the app itself uses, so a
+ * number that looks wrong in a demo is a real bug.
  *
- * Seeded with a fixed PRNG so every demo looks the same.
+ * It ends with what a visit is about: a stock check a week ago that was
+ * nearly clean, and one today with things missing, so the stock report has
+ * something to show. Seeded with a fixed PRNG so every demo looks the same.
  */
-
-/** What each product is bought by, and how many selling units that holds. */
-const PACKS: Record<string, { label: string; units: number }> = {
-  Nyanya: { label: 'tenga', units: 40 },
-  Vitunguu: { label: 'gunia', units: 50 },
-  'Sukuma wiki': { label: 'tita', units: 25 },
-  Mchicha: { label: 'tita', units: 25 },
-  Ndizi: { label: 'mkungu', units: 60 },
-  Viazi: { label: 'gunia', units: 50 },
-  Karoti: { label: 'gunia', units: 40 },
-  Hoho: { label: 'ndoo', units: 30 },
-  Nazi: { label: 'gunia', units: 30 },
-  Limau: { label: 'ndoo', units: 40 },
-};
-
-const PRICES: Record<string, { price: number; cost: number }> = {
-  Nyanya: { price: 1000, cost: 600 },
-  Vitunguu: { price: 1000, cost: 650 },
-  'Sukuma wiki': { price: 500, cost: 250 },
-  Mchicha: { price: 500, cost: 250 },
-  Ndizi: { price: 300, cost: 150 },
-  Viazi: { price: 1500, cost: 1000 },
-  Karoti: { price: 1000, cost: 600 },
-  Hoho: { price: 500, cost: 300 },
-  Nazi: { price: 1500, cost: 900 },
-  Limau: { price: 500, cost: 250 },
-};
 
 const CUSTOMERS = [
   { name: 'Mama Asha', phone: '0713 222 111' },
   { name: 'Baba Juma', phone: '0754 333 444' },
   { name: 'Bi. Rehema', phone: '0689 555 666' },
+  { name: 'Neema Mushi', phone: '0765 777 888' },
   { name: 'Mzee Hamisi', phone: null },
 ];
+
+/** How many items a typical sale has, and how many sales a day, by trade. */
+const PACE: Partial<Record<BusinessType, { perDay: [number, number]; restock: [number, number] }>> = {
+  genge: { perDay: [18, 33], restock: [8, 14] },
+  duka: { perDay: [20, 35], restock: [10, 20] },
+  cosmetics: { perDay: [6, 12], restock: [3, 6] },
+  clothes: { perDay: [4, 9], restock: [2, 4] },
+  hardware: { perDay: [6, 12], restock: [3, 6] },
+  pharmacy: { perDay: [12, 22], restock: [5, 10] },
+  wholesale: { perDay: [4, 8], restock: [3, 6] },
+};
 
 function prng(seed: number) {
   let state = seed;
@@ -67,108 +59,127 @@ function prng(seed: number) {
   };
 }
 
-export async function createDemoBusiness(userId: string, name: string, locale: string): Promise<string> {
-  const business = await createBusiness({ name, type: 'genge', locale, userId });
+const keyOf = (p: Pick<Product, 'name' | 'variant'>) => `${p.name}|${p.variant ?? ''}`;
+
+export async function createDemoBusiness(
+  userId: string,
+  name: string,
+  locale: string,
+  type: BusinessType = 'genge'
+): Promise<string> {
+  const business = await createBusiness({ name, type, locale, userId });
   const businessId = business.id;
   const random = prng(42);
   const pick = <T>(list: readonly T[]) => list[Math.floor(random() * list.length)]!;
+  const between = ([lo, hi]: [number, number]) => lo + Math.floor(random() * (hi - lo + 1));
+  const pace = PACE[type] ?? { perDay: [8, 16], restock: [4, 8] };
 
+  const starters = new Map<string, StarterProduct>(STARTER_PRODUCTS[type].map((s) => [keyOf(s), s]));
   const products = await db().products.where('businessId').equals(businessId).toArray();
-  const priced: Product[] = [];
+  const priced: (Product & { starter: StarterProduct | undefined })[] = [];
   for (const product of products) {
-    const p = PRICES[product.name];
-    const next = { ...product, price: p?.price ?? 1000, trackStock: true, lowStockLevel: 5 };
+    const starter = starters.get(keyOf(product));
+    const next = { ...product, price: starter?.price ?? 1000, trackStock: true, lowStockLevel: 3 };
     await saveProduct(next);
-    const bulk = PACKS[product.name];
-    if (bulk) {
-      await saveProductPacks({ businessId, productId: product.id, packs: [bulk] });
-    }
-    priced.push(next);
+    if (starter?.pack) await saveProductPacks({ businessId, productId: product.id, packs: [starter.pack] });
+    priced.push({ ...next, starter });
   }
 
   const customers = [];
   for (const c of CUSTOMERS) customers.push(await createCustomer({ businessId, name: c.name, phone: c.phone }));
 
   const today = businessDay();
+  const at = (day: string, hour: number) =>
+    new Date(Math.min(new Date(dayBounds(day).start).getTime() + hour * 3_600_000, Date.now() - 60_000)).toISOString();
+  const onHand = async () => stockByProduct(await db().stockMovements.where('businessId').equals(businessId).toArray());
+
   // The float in the tin on the first morning; every close carries forward.
   let openingCash = 20000;
   for (let daysAgo = 13; daysAgo >= 0; daysAgo--) {
-    const dayStart = new Date(dayBounds(addDays(today, -daysAgo)).start).getTime();
-    // Today's demo stops at the current hour rather than inventing the future.
-    const at = (hour: number) => new Date(Math.min(dayStart + hour * 3_600_000, Date.now() - 60_000)).toISOString();
+    const day = addDays(today, -daysAgo);
 
-    // Morning at the market: restock.
+    // Restock: everything on the first morning, then a few lines each day.
+    const restock = daysAgo === 13 ? priced : priced.filter((_, index) => index % 3 === daysAgo % 3).slice(0, 3);
     await recordPurchase({
       businessId,
       userId,
-      at: at(6),
+      at: at(day, 7),
       lines: await Promise.all(
-        // Three lines a morning, rotating, so buying stays below selling.
-        priced
-          .filter((_, index) => index % 3 === daysAgo % 3)
-          .slice(0, 3)
-          .map(async (p) => {
-          const bulk = PACKS[p.name];
-          const cost = PRICES[p.name]?.cost ?? 600;
+        restock.map(async (p) => {
+          const cost = p.starter?.cost ?? Math.round(p.price * 0.7);
+          const bulk = p.starter?.pack;
           if (!bulk) {
-            const qty = 8 + Math.floor(random() * 6);
+            // The first morning stocks the shelf for the fortnight; later mornings top up.
+            const qty = between(pace.restock) * (daysAgo === 13 ? 5 : 1);
             return { productId: p.id, qty, totalCost: qty * cost };
           }
-          // A morning at Kariakoo: a crate here, half a sack there.
-          const packQty = random() < 0.6 ? 0.5 : 1;
+          const packQty = daysAgo === 13 ? 1 : random() < 0.6 ? 0.5 : 1;
           const qty = packToUnits(packQty, bulk.units);
-          const pack = await db()
-            .productPacks.where('productId')
-            .equals(p.id)
-            .filter((row) => row.active)
-            .first();
-          return {
-            productId: p.id,
-            qty,
-            totalCost: Math.round(qty * cost),
-            packId: pack?.id ?? null,
-            packLabel: bulk.label,
-            packQty,
-          };
+          const pack = await db().productPacks.where('productId').equals(p.id).filter((row) => row.active).first();
+          return { productId: p.id, qty, totalCost: Math.round(qty * cost), packId: pack?.id ?? null, packLabel: bulk.label, packQty };
         })
       ),
     });
 
-    await recordExpense({ businessId, userId, at: at(7), category: 'nauli', amount: 3000 });
-    await recordExpense({ businessId, userId, at: at(8), category: 'ushuru', amount: 500 });
-    if (daysAgo % 7 === 0) await recordExpense({ businessId, userId, at: at(12), category: 'kodi' as ExpenseCategory, amount: 15000 });
+    await recordExpense({ businessId, userId, at: at(day, 7.5), category: 'nauli', amount: 3000 });
+    if (daysAgo % 7 === 0) await recordExpense({ businessId, userId, at: at(day, 12), category: 'kodi' as ExpenseCategory, amount: 15000 });
 
-    const salesToday = 18 + Math.floor(random() * 15);
+    const salesToday = between(pace.perDay);
     for (let i = 0; i < salesToday; i++) {
       const hour = 8 + (i / salesToday) * 11;
-      const items = 1 + Math.floor(random() * 3);
+      const items = 1 + Math.floor(random() * 2);
       const lines = Array.from({ length: items }, () => {
         const p = pick(priced);
-        return { id: crypto.randomUUID(), productId: p.id, description: p.name, qty: 1 + Math.floor(random() * 2), unitPrice: p.price, unitCost: PRICES[p.name]?.cost ?? null, vatType: p.vatType };
+        return {
+          id: crypto.randomUUID(),
+          productId: p.id,
+          description: productLabel(p),
+          qty: 1 + (random() < 0.25 ? 1 : 0),
+          unitPrice: p.price,
+          unitCost: p.starter?.cost ?? null,
+          vatType: p.vatType,
+        };
       });
       const total = lines.reduce((s, l) => s + l.qty * l.unitPrice, 0);
       const roll = random();
-      const onCredit = roll < 0.1;
+      const onCredit = roll < 0.08;
+      const named = onCredit || roll > 0.8;
       await recordSale({
         businessId,
         userId,
-        at: at(hour),
+        at: at(day, hour),
         lines,
-        customerId: onCredit ? pick(customers).id : null,
-        tenders: onCredit ? [] : roll < 0.35 ? [{ method: 'mpesa', amount: total }] : [{ method: 'cash', amount: total }],
+        customerId: named ? pick(customers).id : null,
+        tenders: onCredit ? [] : roll < 0.4 ? [{ method: 'mpesa', amount: total }] : [{ method: 'cash', amount: total }],
       });
     }
 
-    if (daysAgo % 3 === 1) {
-      await recordWaste({ businessId, userId, at: at(18), productId: priced[0]!.id, qty: 2, reason: 'imeoza' });
+    if (daysAgo % 5 === 1) {
+      await recordWaste({ businessId, userId, at: at(day, 18), productId: priced[0]!.id, qty: 1, reason: type === 'genge' ? 'imeoza' : 'imeharibika' });
     }
     if (daysAgo % 4 === 2) {
-      await recordDebtPayment({ businessId, userId, at: at(17), customerId: pick(customers).id, amount: 2000, method: 'cash' });
+      await recordDebtPayment({ businessId, userId, at: at(day, 17), customerId: pick(customers).id, amount: 2000, method: 'cash' });
+    }
+
+    // Stock checks: a week ago nearly clean, today a few things missing.
+    if (daysAgo === 7 || daysAgo === 0) {
+      const stock = await onHand();
+      const shelf = priced.slice(0, Math.min(priced.length, 8));
+      await recordStockCount({
+        businessId,
+        userId,
+        kind: 'check',
+        at: at(day, 19),
+        items: shelf.map((p, index) => {
+          const recorded = Math.max(0, stock.get(p.id) ?? 0);
+          const missing = daysAgo === 7 ? (index === 0 ? 1 : 0) : index % 3 === 0 ? 2 : index % 4 === 1 ? 1 : 0;
+          return { productId: p.id, counted: Math.max(0, recorded - missing) };
+        }),
+      });
     }
 
     // Funga siku for every finished day, usually a few hundred shillings out.
     if (daysAgo > 0) {
-      const day = addDays(today, -daysAgo);
       const summary = summariseDay({ ...(await loadRange(businessId, day, day)), openingCash });
       const shortBy = random() < 0.6 ? 0 : Math.round(random() * 10) * 100;
       const counted = summary.expectedCash - shortBy;

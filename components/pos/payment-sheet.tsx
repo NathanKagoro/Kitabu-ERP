@@ -1,6 +1,6 @@
 'use client';
 
-import { Banknote, BookUser, Smartphone, Split } from '@/components/icons';
+import { Banknote, BookUser, Smartphone, Split, UserPlus } from '@/components/icons';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
@@ -51,6 +51,7 @@ export function PaymentSheet({
   const [reference, setReference] = useState('');
   const [splitCash, setSplitCash] = useState('');
   const [customerId, setCustomerId] = useState<string | null>(null);
+  const [pickingCustomer, setPickingCustomer] = useState(false);
 
   const tenders: Tender[] = (() => {
     switch (mode) {
@@ -128,11 +129,24 @@ export function PaymentSheet({
           </Field>
         )}
 
-        {(mode === 'credit' || mode === 'split') && (
+        {mode === 'credit' || mode === 'split' || pickingCustomer ? (
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-ink-soft">{t('chooseCustomer')}</p>
+            <p className="text-sm font-semibold text-ink-soft">
+              {mode === 'credit' || mode === 'split' ? t('chooseCustomer') : t('chooseCustomerOptional')}
+            </p>
             <CustomerPicker value={customerId} onChange={setCustomerId} />
           </div>
+        ) : (
+          // Knowing who bought is what makes a customer list for offers. Never
+          // required for a cash or mobile sale: one tap, and only if they want.
+          <button
+            type="button"
+            onClick={() => setPickingCustomer(true)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-dashed border-line-strong text-sm font-semibold text-ink-soft"
+          >
+            <UserPlus size={18} />
+            {t('addCustomerOptional')}
+          </button>
         )}
 
         <div className="rounded-[10px] bg-paper px-3">

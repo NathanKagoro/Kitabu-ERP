@@ -10,6 +10,7 @@ export { Check } from './Check';
 export { ChevronLeft } from './ChevronLeft';
 export { ChevronRight } from './ChevronRight';
 export { CircleCheck } from './CircleCheck';
+export { ClipboardCheck } from './ClipboardCheck';
 export { CloudOff } from './CloudOff';
 export { Copy } from './Copy';
 export { Delete } from './Delete';

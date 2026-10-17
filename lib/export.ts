@@ -71,8 +71,10 @@ export async function buildExport(businessId: string, kind: ExportKind): Promise
 }
 
 export function downloadText(filename: string, text: string, type = 'text/csv;charset=utf-8'): void {
-  // BOM so Excel reads Swahili names as UTF-8.
-  const blob = new Blob(['﻿', text], { type });
+  // BOM so Excel reads Swahili names as UTF-8. Contacts files must not have one:
+  // some phones refuse to import a .vcf that starts with it.
+  const bom = type.startsWith('text/csv') ? '\uFEFF' : '';
+  const blob = new Blob([bom, text], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;

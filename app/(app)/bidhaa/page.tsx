@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight, Package, Plus, Search } from '@/components/icons';
+import { ChevronRight, ClipboardCheck, Package, Plus, Search } from '@/components/icons';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useMemo, useState } from 'react';
@@ -20,6 +20,7 @@ import { formatQty } from '@/lib/units';
  */
 export default function ProductsPage() {
   const t = useTranslations('products');
+  const ts = useTranslations('stockCheck');
   const { businessId, show, can } = useApp();
   const products = useProducts(businessId);
   const stock = useStock(businessId);
@@ -42,15 +43,26 @@ export default function ProductsPage() {
         }
       />
 
-      {can('manageProducts') && (
-        <div className="px-3 pt-3">
-          <Link
-            href="/bidhaa/ingiza"
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface font-semibold text-brand active:bg-paper"
-          >
-            <Package size={20} />
-            {t('bulk.open')}
-          </Link>
+      {(can('manageProducts') || (can('countStock') && show('stockTracking'))) && (
+        <div className="grid grid-cols-2 gap-2 px-3 pt-3">
+          {can('manageProducts') && (
+            <Link
+              href="/bidhaa/ingiza"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface px-2 text-center text-sm font-semibold text-brand active:bg-paper"
+            >
+              <Package size={20} className="shrink-0" />
+              {t('bulk.openShort')}
+            </Link>
+          )}
+          {can('countStock') && show('stockTracking') && (
+            <Link
+              href="/stoo"
+              className="flex min-h-12 items-center justify-center gap-2 rounded-[10px] border border-line-strong bg-surface px-2 text-center text-sm font-semibold text-brand active:bg-paper"
+            >
+              <ClipboardCheck size={20} className="shrink-0" />
+              {ts('title')}
+            </Link>
+          )}
         </div>
       )}
 

@@ -67,7 +67,7 @@ vi.mock('@/lib/supabase/client', () => ({
 }));
 
 const { HesabuDB, setDb, db, setMeta, META_KEYS } = await import('@/lib/local/db');
-const actions = await import('@/lib/local/actions');
+const actions = { ...(await import('@/lib/local/actions')), ...(await import('@/lib/local/stock-count')) };
 const { sync } = await import('@/lib/sync/engine');
 const { createBusiness } = await import('@/lib/onboarding/create-business');
 const { summariseDay } = await import('@/lib/calc/summary');
@@ -332,7 +332,7 @@ describe('addProductsInBulk (setup day)', () => {
         { name: '   ', price: 100 },
       ],
     });
-    expect(added).toBe(2);
+    expect(added).toHaveLength(2);
 
     const all = await db().products.where('businessId').equals(businessId).toArray();
     expect(all).toHaveLength(before + 2);
@@ -354,4 +354,106 @@ describe('addProductsInBulk (setup day)', () => {
     expect(pushed.some((row) => row.name === 'Viatu' && row.variant === '40')).toBe(true);
     expect(server.tables.get('stock_movements')?.size).toBe(1);
   });
+});
+
+describe('recordStockCount', () => {
+  async function shelf() {
+    await actions.addProductsInBulk({
+      businessId,
+      unit: 'kipande',
+      trackStock: true,
+      rows: [
+        { name: 'Lipstick', variant: 'Red 01', price: 8000, cost: 5500, qty: 12 },
+        { name: 'Nivea', variant: '400ml', price: 12500, cost: 9000, qty: 6 },
+      ],
+    });
+    const all = await db().products.where('businessId').equals(businessId).toArray();
+    return { red: all.find((p) => p.variant === 'Red 01')!, nivea: all.find((p) => p.variant === '400ml')! };
+  }
+  const onHand = async (productId: string) => stockOnHand(await db().stockMovements.where('productId').equals(productId).toArray());
+
+  it('compares a count with the records and shows the shortfall in shillings', async () => {
+    const { red, nivea } = await shelf();
+    // Two lipsticks sold through the till; the records now say 10.
+    await actions.recordSale({ businessId, lines: [cartLine(red.id, 2, 8000, 5500)], tenders: [{ method: 'cash', amount: 16000 }] });
+
+    const count = await actions.recordStockCount({
+      businessId,
+      kind: 'check',
+      items: [
+        { productId: red.id, counted: 7 }, // 3 missing
+        { productId: nivea.id, counted: 6 },
+      ],
+    });
+    expect(count).toMatchObject({ itemsCounted: 2, linesShort: 1, unitsShort: 3, valueShortCost: 16500, valueShortPrice: 24000 });
+    expect(count.lines.find((l) => l.productId === red.id)).toMatchObject({ name: 'Lipstick – Red 01', expected: 10, counted: 7 });
+
+    // The ledger now agrees with the shelf, and the correction points at the count.
+    expect(await onHand(red.id)).toBe(7);
+    expect(await onHand(nivea.id)).toBe(6);
+    const adjust = (await db().stockMovements.where('refId').equals(count.id).toArray());
+    expect(adjust.map((m) => m.qty)).toEqual([-3]);
+  });
+
+  it('an opening count compares with the owner’s estimate and leaves the ledger alone', async () => {
+    const { red } = await shelf();
+    const count = await actions.recordStockCount({ businessId, kind: 'opening', items: [{ productId: red.id, counted: 12, expected: 20 }] });
+    expect(count).toMatchObject({ kind: 'opening', unitsShort: 8, valueShortCost: 44000 });
+    expect(await onHand(red.id)).toBe(12);
+  });
+
+  it('syncs the report and its corrections together', async () => {
+    const { red } = await shelf();
+    await sync();
+    await actions.recordStockCount({ businessId, kind: 'check', items: [{ productId: red.id, counted: 11 }] });
+    await sync();
+    expect(server.tables.get('stock_counts')?.size).toBe(1);
+    const row = [...server.tables.get('stock_counts')!.values()][0]!;
+    expect(row).toMatchObject({ value_short_cost: 5500, kind: 'check' });
+  });
+});
+
+describe('the first visit', () => {
+  it('compares the counted shelf with the owner’s figures and records the gap', async () => {
+    const { products, count } = await actions.addProductsWithOpeningCount({
+      businessId,
+      unit: 'kipande',
+      trackStock: true,
+      rows: [
+        { name: 'Lipstick', variant: 'Red 01', price: 8000, cost: 5500, qty: 9, expected: 12 },
+        { name: 'Nivea', variant: '400ml', price: 12500, cost: 9000, qty: 6 }, // no figure given
+      ],
+    });
+    expect(products).toHaveLength(2);
+    expect(count).toMatchObject({ kind: 'opening', itemsCounted: 1, unitsShort: 3, valueShortCost: 16500 });
+    // The shelf as counted is the opening stock, whatever the estimate said.
+    const red = products.find((p) => p.variant === 'Red 01')!;
+    expect(stockOnHand(await db().stockMovements.where('productId').equals(red.id).toArray())).toBe(9);
+  });
+
+  it('with no figures there is no report, just the opening stock', async () => {
+    const { count } = await actions.addProductsWithOpeningCount({ businessId, unit: 'kipande', trackStock: true, rows: [{ name: 'Geisha', price: 1500, qty: 40 }] });
+    expect(count).toBeNull();
+    expect(await db().stockCounts.count()).toBe(0);
+  });
+});
+
+describe('every shop type starts with its own things', () => {
+  const VEG = /🍅|🧅|🥬|🌿|🍌|🥔|🥕|🫑|🥥|🍋/u;
+
+  it('a cosmetics demo has lotions and lipsticks in their categories, and no vegetables', async () => {
+    const { createDemoBusiness } = await import('@/lib/demo');
+    const id = await createDemoBusiness('u1', 'Vipodozi – mfano', 'sw', 'cosmetics');
+    const products = await db().products.where('businessId').equals(id).toArray();
+    expect(products.length).toBeGreaterThan(5);
+    expect(products.every((p) => p.category && p.price > 0)).toBe(true);
+    expect(products.some((p) => p.name === 'Lipstick Flormar' && p.variant === 'Red 01')).toBe(true);
+    expect(products.some((p) => VEG.test(p.icon ?? ''))).toBe(false);
+
+    // The demo ends on the stock-check story: today's count has things missing.
+    const counts = (await db().stockCounts.where('businessId').equals(id).toArray()).sort((a, b) => a.clientCreatedAt.localeCompare(b.clientCreatedAt));
+    expect(counts).toHaveLength(2);
+    expect(counts[1]!.linesShort).toBeGreaterThan(counts[0]!.linesShort);
+    expect(counts[1]!.valueShortCost).toBeGreaterThan(0);
+  }, 30_000);
 });

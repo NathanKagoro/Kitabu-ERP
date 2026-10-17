@@ -64,12 +64,14 @@ export interface BulkRow {
   price: number | null;
   cost: number | null;
   qty: number | null;
+  /** What should be there (owner's estimate / delivery note), if known. */
+  expected: number | null;
 }
 
 /**
  * Turns text pasted from a spreadsheet or typed in WhatsApp into rows:
  *
- *   name, shade/size, category, price, cost, quantity
+ *   name, shade/size, category, price, cost, quantity, expected
  *
  * Tabs (copied from Excel / Google Sheets), commas or semicolons all work.
  * Later columns may be left off. A header row is skipped. Numbers may carry
@@ -81,7 +83,7 @@ export function parseBulkText(text: string): BulkRow[] {
     const line = raw.trim();
     if (!line) continue;
     const cells = splitCells(line);
-    const [name = '', variant = '', category = '', price = '', cost = '', qty = ''] = cells;
+    const [name = '', variant = '', category = '', price = '', cost = '', qty = '', expected = ''] = cells;
     if (!name) continue;
     if (rows.length === 0 && isHeader(name, price)) continue;
     rows.push({
@@ -91,6 +93,7 @@ export function parseBulkText(text: string): BulkRow[] {
       price: money(price),
       cost: money(cost),
       qty: quantity(qty),
+      expected: quantity(expected),
     });
   }
   return rows;

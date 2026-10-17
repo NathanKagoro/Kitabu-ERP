@@ -48,23 +48,27 @@ describe('a product family reads as one', () => {
 describe('bulk entry from a paste', () => {
   it('reads a spreadsheet paste (tabs), skipping the header', () => {
     const rows = parseBulkText('Jina\tRangi/Saizi\tKundi\tBei\tGharama\tIdadi\nNivea Lotion\t400ml\tLosheni\t12,500\t9,000\t6\n');
-    expect(rows).toEqual([{ name: 'Nivea Lotion', variant: '400ml', category: 'Losheni', price: 12500, cost: 9000, qty: 6 }]);
+    expect(rows).toEqual([{ name: 'Nivea Lotion', variant: '400ml', category: 'Losheni', price: 12500, cost: 9000, qty: 6, expected: null }]);
   });
 
   it('reads commas and semicolons, keeping "12,500" whole', () => {
     expect(parseBulkText('Lipstick, Red 01, Make-up, 8,000, 5,500, 12')).toEqual([
-      { name: 'Lipstick', variant: 'Red 01', category: 'Make-up', price: 8000, cost: 5500, qty: 12 },
+      { name: 'Lipstick', variant: 'Red 01', category: 'Make-up', price: 8000, cost: 5500, qty: 12, expected: null },
     ]);
     expect(parseBulkText('Rangi ya ukuta;20L;Rangi;TSh 85 000;;3')).toEqual([
-      { name: 'Rangi ya ukuta', variant: '20L', category: 'Rangi', price: 85000, cost: null, qty: 3 },
+      { name: 'Rangi ya ukuta', variant: '20L', category: 'Rangi', price: 85000, cost: null, qty: 3, expected: null },
     ]);
   });
 
   it('later columns are optional; blank lines are ignored', () => {
     expect(parseBulkText('\nSabuni ya Geisha\n\nOmo,1kg\n')).toEqual([
-      { name: 'Sabuni ya Geisha', variant: '', category: '', price: null, cost: null, qty: null },
-      { name: 'Omo', variant: '1kg', category: '', price: null, cost: null, qty: null },
+      { name: 'Sabuni ya Geisha', variant: '', category: '', price: null, cost: null, qty: null, expected: null },
+      { name: 'Omo', variant: '1kg', category: '', price: null, cost: null, qty: null, expected: null },
     ]);
+  });
+
+  it('an optional 7th column is what should be there (the owner’s figure)', () => {
+    expect(parseBulkText('Lipstick, Red 01, Make-up, 8000, 5500, 9, 12')[0]).toMatchObject({ qty: 9, expected: 12 });
   });
 
   it('a quantity can be a fraction (kg, metres)', () => {

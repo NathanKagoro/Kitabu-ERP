@@ -36,6 +36,20 @@
       "when": 1791978333134,
       "tag": "0004_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792266594741,
+      "tag": "0005_stock_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792266603510,
+      "tag": "0006_stock_counts_rls",
+      "breakpoints": true
     }
   ]
 }

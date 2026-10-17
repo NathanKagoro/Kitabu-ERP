@@ -14,12 +14,13 @@ import { LOCALE_NAMES, LOCALES } from '@/lib/i18n/config';
 import { createBusiness } from '@/lib/onboarding/create-business';
 import { isDemo, signOut } from '@/lib/auth/session';
 import { SupportButton } from '@/components/support-button';
-import { STARTER_PRODUCTS } from '@/lib/onboarding/starter-products';
+import { STARTER_PRODUCTS, type StarterProduct } from '@/lib/onboarding/starter-products';
 import type { BusinessType } from '@/lib/types';
 import { useSetLocale } from '@/components/locale-provider';
 import { SHOP_TYPE_OPTIONS } from '@/components/shop-types';
 
 const TYPES = SHOP_TYPE_OPTIONS;
+const starterKey = (item: StarterProduct) => `${item.name}|${item.variant ?? ''}`;
 
 /**
  * Three screens, no more: name (with the language switch on it, so everything
@@ -97,7 +98,7 @@ function OnboardingPage() {
       type,
       locale,
       userId,
-      starter: starter.filter((item) => !removed.has(item.name)),
+      starter: starter.filter((item) => !removed.has(starterKey(item))),
     });
     router.replace('/pin');
   };
@@ -202,16 +203,16 @@ function OnboardingPage() {
           <p className="mt-1.5 mb-6 text-ink-soft">{t('starterBody')}</p>
           <div className="grid grid-cols-2 gap-2">
             {starter.map((item) => {
-              const kept = !removed.has(item.name);
+              const kept = !removed.has(starterKey(item));
               return (
                 <button
-                  key={item.name}
+                  key={starterKey(item)}
                   aria-pressed={kept}
                   onClick={() =>
                     setRemoved((current) => {
                       const next = new Set(current);
-                      if (next.has(item.name)) next.delete(item.name);
-                      else next.add(item.name);
+                      if (next.has(starterKey(item))) next.delete(starterKey(item));
+                      else next.add(starterKey(item));
                       return next;
                     })
                   }
@@ -225,7 +226,10 @@ function OnboardingPage() {
                   <span className="text-xl" aria-hidden>
                     {item.icon}
                   </span>
-                  <span className="min-w-0 flex-1">{item.name}</span>
+                  <span className="min-w-0 flex-1">
+                    {item.name}
+                    {item.variant ? <span className="block text-xs font-normal text-ink-soft">{item.variant}</span> : null}
+                  </span>
                   {kept ? <Check size={18} className="shrink-0 text-brand" /> : null}
                 </button>
               );
