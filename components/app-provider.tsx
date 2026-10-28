@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 
 import { db, getMeta, META_KEYS } from '@/lib/local/db';
+import { activeMemberKey } from '@/lib/auth/till-person';
 import { roleCan, type Feature, type Permission } from '@/lib/modes';
 import { shopHasFeature } from '@/lib/shop-config';
 import type { Business, BusinessMode, Member, MemberRole } from '@/lib/types';
@@ -18,7 +19,16 @@ interface AppState {
   /** This login is the operator (see /admin). */
   operator: boolean;
   business: Business | null;
+  /**
+   * The person at the till. On a shared phone this is whoever chose
+   * themselves in "Nani anauza?" with their PIN; otherwise the signed-in login.
+   * Sales, payments and permissions follow this person.
+   */
   member: Member | null;
+  /** The signed-in login's own membership (the phone's account holder). */
+  loginMember: Member | null;
+  /** Everyone who can take over this phone's till with a PIN. */
+  tillPeople: Member[];
   role: MemberRole;
   mode: BusinessMode;
   vatRate: number;
@@ -38,16 +48,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     ]);
 
     const business = businessId ? ((await db().businesses.get(businessId)) ?? null) : null;
-    const member =
-      businessId && userId
-        ? ((await db()
-            .members.where('businessId')
-            .equals(businessId)
-            .filter((m) => m.userId === userId)
-            .first()) ?? null)
-        : null;
+    const members = businessId ? await db().members.where('businessId').equals(businessId).toArray() : [];
+    const live = members.filter((m) => m.active && !m.deletedAt);
+    const loginMember = (userId && live.find((m) => m.userId === userId)) || null;
+    const tillPeople = live.filter((m) => m.pinHash).sort((a, b) => (a.role === 'owner' ? -1 : b.role === 'owner' ? 1 : (a.name ?? '').localeCompare(b.name ?? '')));
+    const activeId = businessId ? await getMeta<string | null>(activeMemberKey(businessId), null) : null;
+    const active = activeId ? (tillPeople.find((m) => m.id === activeId) ?? null) : null;
+    const member = active ?? loginMember;
 
-    return { userId, businessId, business, member, mustSetPassword, operator };
+    return { userId, businessId, business, member, loginMember, tillPeople, mustSetPassword, operator };
   }, []);
 
   const mode: BusinessMode = state?.business?.mode ?? 'genge';
@@ -68,6 +77,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       operator: state?.operator ?? false,
       business: state?.business ?? null,
       member: state?.member ?? null,
+      loginMember: state?.loginMember ?? null,
+      tillPeople: state?.tillPeople ?? [],
       role,
       mode,
       vatRate: Number(state?.business?.settings?.vatRate ?? 18) / 100,

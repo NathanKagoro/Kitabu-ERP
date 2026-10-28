@@ -101,6 +101,8 @@ export type Permission =
   | 'closeDay'
   | 'countStock'
   | 'viewStaffSales'
+  /** The whole customer list, offers and exports. Not cashiers: the list is the shop's asset. */
+  | 'customerList'
   | 'manageSettings'
   | 'manageStaff';
 
@@ -118,6 +120,7 @@ const ROLE_PERMISSIONS: Record<MemberRole, ReadonlySet<Permission>> = {
     'closeDay',
     'countStock',
     'viewStaffSales',
+    'customerList',
     'manageSettings',
     'manageStaff',
   ]),
@@ -134,6 +137,7 @@ const ROLE_PERMISSIONS: Record<MemberRole, ReadonlySet<Permission>> = {
     'closeDay',
     'countStock',
     'viewStaffSales',
+    'customerList',
   ]),
   cashier: new Set<Permission>(['sell', 'recordExpense', 'manageCustomers']),
 };

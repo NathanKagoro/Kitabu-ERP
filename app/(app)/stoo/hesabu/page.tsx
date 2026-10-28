@@ -13,6 +13,9 @@ import { useToast } from '@/components/ui/toast';
 import { lineDifference, summariseCount, type CountLine } from '@/lib/calc/stock-count';
 import { cn } from '@/lib/cn';
 import { recordStockCount } from '@/lib/local/stock-count';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { sync as runSync } from '@/lib/sync/engine';
+import { useSyncState } from '@/components/sync-indicator';
 import { useProducts, useStock } from '@/lib/local/queries';
 import { categoriesOf, groupByCategory, matchesQuery, productLabel } from '@/lib/products';
 import { formatQty } from '@/lib/units';
@@ -27,16 +30,30 @@ import { formatQty } from '@/lib/units';
 
 const draftKey = (businessId: string) => `kitabu:countDraft:${businessId}`;
 
-function loadDraft(businessId: string | null): Record<string, string> {
+/**
+ * What was typed for a product and when. The time is the moment that shelf
+ * line was counted: the stock is set to the count as of then, so a sale made
+ * just before it (here or on another phone, synced or not) is not counted as
+ * missing, and one made after it still comes off.
+ */
+interface Typed {
+  value: string;
+  at: string;
+}
+
+function loadDraft(businessId: string | null): Record<string, Typed> {
   if (!businessId) return {};
   try {
-    return JSON.parse(localStorage.getItem(draftKey(businessId)) ?? '{}') as Record<string, string>;
+    const raw = JSON.parse(localStorage.getItem(draftKey(businessId)) ?? '{}') as Record<string, Typed | string>;
+    // Drafts from before 0.5 were bare numbers; their time is unknown, so "now".
+    const now = new Date().toISOString();
+    return Object.fromEntries(Object.entries(raw).map(([id, v]) => [id, typeof v === 'string' ? { value: v, at: now } : v]));
   } catch {
     return {};
   }
 }
 
-function saveDraft(businessId: string, draft: Record<string, string>) {
+function saveDraft(businessId: string, draft: Record<string, Typed>) {
   try {
     if (Object.keys(draft).length) localStorage.setItem(draftKey(businessId), JSON.stringify(draft));
     else localStorage.removeItem(draftKey(businessId));
@@ -62,7 +79,14 @@ export default function CountPage() {
   const products = useProducts(businessId);
   const stock = useStock(businessId);
 
-  const [counts, setCounts] = useState<Record<string, string>>(() => loadDraft(businessId));
+  const [counts, setCounts] = useState<Record<string, Typed>>(() => loadDraft(businessId));
+  const sync = useSyncState();
+
+  // Bring in every other phone's sales before counting, so "records" is as
+  // complete as it can be. Sales that arrive later still correct the report.
+  useEffect(() => {
+    void runSync();
+  }, []);
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [saving, setSaving] = useState(false);
@@ -87,7 +111,7 @@ export default function CountPage() {
   const lines: CountLine[] = useMemo(
     () =>
       tracked.flatMap((p) => {
-        const counted = parseQty(counts[p.id] ?? '');
+        const counted = parseQty(counts[p.id]?.value ?? '');
         if (counted === null) return [];
         return [
           {
@@ -95,6 +119,7 @@ export default function CountPage() {
             name: productLabel(p),
             expected: Math.max(0, stock?.get(p.id) ?? 0),
             counted,
+            countedAt: counts[p.id]?.at,
             unitCost: p.cost ?? null,
             unitPrice: p.price,
           },
@@ -122,7 +147,7 @@ export default function CountPage() {
         userId,
         kind: 'check',
         scope: category,
-        items: lines.map((line) => ({ productId: line.productId, counted: line.counted })),
+        items: lines.map((line) => ({ productId: line.productId, counted: line.counted, countedAt: line.countedAt })),
       });
       saveDraft(businessId, {});
       router.replace(`/stoo/ripoti?id=${count.id}`);
@@ -169,6 +194,17 @@ export default function CountPage() {
         )}
       </div>
 
+      {isSupabaseConfigured() && (
+        <p
+          className={cn(
+            'mx-3 mt-3 rounded-[10px] px-3 py-2.5 text-sm font-medium',
+            sync.status === 'syncing' ? 'bg-paper text-ink-soft' : sync.pending > 0 || sync.status !== 'idle' ? 'bg-debt-tint text-debt' : 'bg-info-tint text-info'
+          )}
+        >
+          {sync.status === 'syncing' ? t('syncingFirst') : sync.pending > 0 || sync.status !== 'idle' ? t('notSynced') : t('syncedHint')}
+        </p>
+      )}
+
       {products && tracked.length === 0 ? <EmptyState title={t('nothingTracked')} body={t('nothingTrackedBody')} /> : null}
 
       <div className={cn(lines.length > 0 ? 'pb-48' : 'pb-6')}>
@@ -180,7 +216,7 @@ export default function CountPage() {
             <ul className="divide-y divide-line border-y border-line bg-surface">
               {group.items.map((p) => {
                 const expected = Math.max(0, stock?.get(p.id) ?? 0);
-                const typed = counts[p.id] ?? '';
+                const typed = counts[p.id]?.value ?? '';
                 const counted = parseQty(typed);
                 const diff = counted === null ? null : lineDifference({ expected, counted });
                 return (
@@ -210,7 +246,7 @@ export default function CountPage() {
                         const value = e.target.value;
                         setCounts((current) => {
                           const next = { ...current };
-                          if (value.trim()) next[p.id] = value;
+                          if (value.trim()) next[p.id] = { value, at: new Date().toISOString() };
                           else delete next[p.id];
                           return next;
                         });

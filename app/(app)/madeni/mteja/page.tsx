@@ -6,6 +6,8 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Suspense, useState } from 'react';
 
+import { hasOfferConsent } from '@/lib/customers';
+import { nowIso } from '@/lib/date';
 import { useApp } from '@/components/app-provider';
 import { paymentMethodsOf } from '@/lib/shop-config';
 import { useLastPaidLabel } from '@/components/customers/last-paid';
@@ -40,7 +42,7 @@ function CustomerPage() {
   const tp = useTranslations('payment');
   const tc = useTranslations('common');
   const toast = useToast();
-  const { businessId, userId, business } = useApp();
+  const { businessId, userId, business, member } = useApp();
   const lastPaid = useLastPaidLabel();
 
   const [paying, setPaying] = useState(false);
@@ -84,7 +86,7 @@ function CustomerPage() {
   const value = Math.round(parseKeypad(amount));
   const save = async () => {
     if (!businessId || value <= 0) return;
-    await recordDebtPayment({ businessId, userId, customerId: id, amount: value, method, reference: reference.trim() || null });
+    await recordDebtPayment({ businessId, userId, memberId: member?.id ?? null, customerId: id, amount: value, method, reference: reference.trim() || null });
     toast(t('paymentRecorded'));
     setPaying(false);
     setAmount('');
@@ -130,8 +132,10 @@ function CustomerPage() {
 
       <section className="card mx-3 mb-3 overflow-hidden">
         <SwitchRow
-          checked={!customer.noOffers}
-          onChange={(on) => void updateCustomer({ ...customer, noOffers: !on }).then(() => toast(tc('saved')))}
+          checked={hasOfferConsent(customer)}
+          onChange={(on) =>
+            void updateCustomer({ ...customer, offersConsentAt: on ? nowIso() : null, noOffers: !on }).then(() => toast(tc('saved')))
+          }
           label={tcl('getsOffers')}
           hint={customer.phone ? tcl('getsOffersHint') : t('addPhoneToRemind')}
         />

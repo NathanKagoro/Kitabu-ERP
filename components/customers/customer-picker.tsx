@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
 import { cn } from '@/lib/cn';
 import { createCustomer } from '@/lib/local/actions';
+import { ConsentCheck } from '@/components/customers/consent-check';
 import { useCustomers } from '@/lib/local/queries';
 
 /**
@@ -34,6 +35,7 @@ export function CustomerPicker({
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [consent, setConsent] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -43,9 +45,10 @@ export function CustomerPicker({
 
   const add = async () => {
     if (!businessId || !name.trim()) return;
-    const customer = await createCustomer({ businessId, name, phone });
+    const customer = await createCustomer({ businessId, name, phone, offersConsent: consent });
     onChange(customer.id);
     setAdding(false);
+    setConsent(false);
     setName('');
     setPhone('');
   };
@@ -63,6 +66,7 @@ export function CustomerPicker({
             <TextInput id={id} type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           )}
         </Field>
+        {phone.trim() ? <ConsentCheck checked={consent} onChange={setConsent} /> : null}
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setAdding(false)}>
             {tc('cancel')}

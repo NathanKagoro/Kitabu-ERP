@@ -1,6 +1,7 @@
 'use client';
 
-import { History, Plus, Search, ShoppingBasket, Tag, Zap } from '@/components/icons';
+import { History, Plus, Search, ShoppingBasket, Tag, UserRound, Zap } from '@/components/icons';
+import { personName } from '@/lib/auth/till-person';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
@@ -17,7 +18,7 @@ import { cn } from '@/lib/cn';
 import { cartTotal, lineTotal, type Tender } from '@/lib/calc/sale';
 import { isLowStock } from '@/lib/calc/stock';
 import { db } from '@/lib/local/db';
-import { recordSale } from '@/lib/local/actions';
+import { recordSale } from '@/lib/local/sale';
 import { useProducts, useStock } from '@/lib/local/queries';
 import { cartQtyByProduct, cartReducer, EMPTY_CART, lineFor } from '@/lib/pos/cart';
 import { uuidv7 } from '@/lib/uuid';
@@ -35,6 +36,7 @@ const LineEditor = dynamic(() => import('@/components/pos/line-editor').then((m)
 const PaymentSheet = dynamic(() => import('@/components/pos/payment-sheet').then((m) => m.PaymentSheet));
 const SuccessSheet = dynamic(() => import('@/components/pos/success-sheet').then((m) => m.SuccessSheet));
 const CartSheet = dynamic(() => import('@/components/pos/cart-sheet').then((m) => m.CartSheet));
+const WhoSelling = dynamic(() => import('@/components/who-selling').then((m) => m.WhoSelling));
 const QuickSaleSheet = dynamic(() => import('@/components/pos/quick-sale-sheet').then((m) => m.QuickSaleSheet));
 
 export default function SalesPage() {
@@ -44,12 +46,14 @@ export default function SalesPage() {
   const tprices = useTranslations('prices');
   const te = useTranslations('errors');
   const toast = useToast();
-  const { businessId, userId, business, show } = useApp();
+  const { businessId, userId, business, show, member, tillPeople } = useApp();
 
   const products = useProducts(businessId);
   const stock = useStock(businessId);
 
   const [cart, dispatch] = useReducer(cartReducer, EMPTY_CART);
+  const [switching, setSwitching] = useState(false);
+  const tt = useTranslations('till');
   const [query, setQuery] = useState('');
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -96,6 +100,7 @@ export default function SalesPage() {
       const { sale } = await recordSale({
         businessId,
         userId,
+        memberId: member?.id ?? null,
         lines: cart.lines,
         discount: cart.discount,
         tenders,
@@ -140,6 +145,17 @@ export default function SalesPage() {
       <header className="sticky top-0 z-30 border-b border-line bg-paper">
         <div className="flex items-center gap-1 py-1.5 pr-1 pl-4">
           <h1 className="min-w-0 flex-1 truncate text-lg font-bold">{business?.name ?? t('title')}</h1>
+          {tillPeople.length > 1 && (
+            // Who is selling: tap to hand the till to someone else (their PIN).
+            <button
+              onClick={() => setSwitching(true)}
+              aria-label={tt('switchPerson')}
+              className="flex h-10 max-w-28 items-center gap-1 rounded-full border border-line-strong bg-surface px-2.5 text-sm font-semibold"
+            >
+              <UserRound size={16} className="shrink-0 text-brand" />
+              <span className="truncate">{personName(member, '—')}</span>
+            </button>
+          )}
           <SyncIndicator />
           <Link
             href="/mauzo/historia"
@@ -340,7 +356,7 @@ export default function SalesPage() {
               setBusy(true);
               try {
                 const line = { id: uuidv7(), productId: null, description: t('amountOnlyLabel'), qty: 1, unitPrice: amount, unitCost: null, vatType: 'standard' as const };
-                const { sale } = await recordSale({ businessId, userId, lines: [line], tenders: [{ method: 'cash', amount }] });
+                const { sale } = await recordSale({ businessId, userId, memberId: member?.id ?? null, lines: [line], tenders: [{ method: 'cash', amount }] });
                 setDone({ sale, lines: [{ description: line.description, qty: 1, lineTotal: amount }] });
                 setQuickOpen(false);
               } catch {
@@ -355,6 +371,11 @@ export default function SalesPage() {
 
       {paying && <PaymentSheet open onClose={() => setPaying(false)} total={total} busy={busy} onConfirm={(tenders, customerId) => void complete(tenders, customerId)} />}
       {done && <SuccessSheet done={done} onClose={() => setDone(null)} />}
+      {switching && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-paper">
+          <WhoSelling onDone={() => setSwitching(false)} onCancel={() => setSwitching(false)} />
+        </div>
+      )}
     </>
   );
 }

@@ -100,7 +100,8 @@
     "currentPin": "PIN ya sasa",
     "newPin": "PIN mpya",
     "forgot": "Umesahau PIN?",
-    "forgotHelp": "Toka kisha ingia tena kwa namba yako ya simu."
+    "forgotHelp": "Toka kisha ingia tena kwa namba yako ya simu.",
+    "setForSubtitle": "PIN ya {name} ya kuuza. Aiweke mwenyewe, tarakimu 4."
   },
   "onboarding": {
     "welcomeTitle": "Karibu Kitabu",
@@ -304,7 +305,12 @@
       "withExpected": "Una idadi iliyotakiwa kuwepo?",
       "withExpectedHint": "Makadirio ya mwenye duka, au risiti ya mzigo wa mwisho. Tutaonyesha kilichopungua leo.",
       "expectedLabel": "Ilitakiwa kuwepo",
-      "expectedHint": "makadirio au risiti"
+      "expectedHint": "makadirio au risiti",
+      "dupRepeat": "Bidhaa hii umeshaiandika kwenye mstari wa {row}.",
+      "dupExists": "Bidhaa hii tayari iko kwenye bidhaa zako. Kubadilisha idadi yake, tumia Hesabu ya stoo.",
+      "dupJoin": "Unganisha na mstari wa {row}",
+      "dupRemove": "Ondoa mstari huu",
+      "dupBlock": "{count, plural, one {Mstari 1 unajirudia. Urekebishe kwanza.} other {Mistari # inajirudia. Irekebishe kwanza.}}"
     }
   },
   "prices": {
@@ -513,7 +519,8 @@
     "remove": "Mwondoe",
     "removeConfirm": "Mwondoe {name} kwenye biashara hii?",
     "invited": "Amealikwa",
-    "empty": "Wewe tu ndiye upo hapa"
+    "empty": "Wewe tu ndiye upo hapa",
+    "needName": "Andika jina lake"
   },
   "settings": {
     "title": "Mipangilio",
@@ -763,7 +770,11 @@
     "shareNoneShort": "Hakuna kilichopungua.",
     "shareLine": "zimepungua {qty}",
     "shareRecount": "Tutahesabu tena tarehe {date}.",
-    "continueSetup": "Endelea: weka bei na anza kuuza"
+    "continueSetup": "Endelea: weka bei na anza kuuza",
+    "syncingFirst": "Inaleta mauzo ya simu nyingine kwanza...",
+    "notSynced": "Simu hii haijasawazishwa. Kama kuna simu nyingine dukani, ziwashe mtandao kwanza. Mauzo yatakayofika baadaye yatasahihisha ripoti.",
+    "syncedHint": "Mauzo ya simu zote zilizo na mtandao yameingia. Ya simu zisizo na mtandao yatasahihisha ripoti yakifika.",
+    "correctedNote": "{count, plural, one {Bidhaa 1 imesahihishwa: mauzo yaliyofanyika kabla ya kuhesabu yamefika baadaye, hayakupotea.} other {Bidhaa # zimesahihishwa: mauzo yaliyofanyika kabla ya kuhesabu yamefika baadaye, hayakupotea.}}"
   },
   "clients": {
     "title": "Wateja",
@@ -783,14 +794,13 @@
     "noPhone": "Hakuna namba",
     "bought": "{count, plural, one {mara 1} other {mara #}}",
     "lastSeen": "{days, plural, =0 {alikuja leo} one {alikuja jana} other {alikuja siku # zilizopita}}",
-    "noOffersBadge": "Hataki ofa",
     "alreadyThere": "Namba hii tayari ni ya {name}",
     "exportHint": "{count, plural, one {Mteja 1 ana namba na anapokea ofa.} other {Wateja # wana namba na wanapokea ofa.}} Faili la namba linaingia kwenye simu, kisha unatengeneza \"broadcast list\" kwenye WhatsApp Business.",
     "exportContacts": "Namba za simu (kwa WhatsApp)",
     "exportSheet": "Orodha kamili (Excel)",
     "offerTitle": "Tuma ofa",
     "offerSubtitle": "Guza jina, WhatsApp itafunguka na ujumbe wake. Tuma, rudi, endelea.",
-    "offerTemplate": "Habari '{jina}'! Leo '{duka}' tuna ofa maalum kwako. Karibu dukani!",
+    "offerTemplate": "Habari '{jina}'! Leo '{duka}' tuna ofa maalum kwako. Karibu dukani! (Usipotaka ujumbe huu, jibu STOP.)",
     "messageLabel": "Ujumbe",
     "messageHint": "'{jina}' = jina la mteja, '{duka}' = jina la duka",
     "preview": "Hivi ndivyo {name} ataona:",
@@ -800,8 +810,11 @@
     "sent": "Imetumwa",
     "send": "Tuma",
     "getsOffers": "Anapokea ofa kwa WhatsApp",
-    "getsOffersHint": "Zima kama ameomba asitumiwe ofa.",
-    "editDetails": "Badilisha jina au namba"
+    "getsOffersHint": "Washa tu kama mteja amekubali. Ukizima, hatatumiwa ofa tena.",
+    "editDetails": "Badilisha jina au namba",
+    "consentLabel": "Amekubali kupokea ofa",
+    "consentHint": "Weka tiki tu kama mteja mwenyewe amesema ndiyo.",
+    "offersBadge": "Anapokea ofa"
   },
   "staffSales": {
     "title": "Mauzo kwa mfanyakazi",
@@ -815,5 +828,20 @@
     "share": "Sehemu",
     "voided": "{count, plural, one {Mauzo 1 yamefutwa} other {Mauzo # yamefutwa}}",
     "unknown": "Hajulikani (kabla ya akaunti)"
+  },
+  "till": {
+    "whoTitle": "Nani anauza?",
+    "whoSubtitle": "Chagua jina lako, kisha weka PIN yako. Mauzo yatakuwa yako.",
+    "notMe": "Si mimi",
+    "enterPin": "Weka PIN yako",
+    "switchPerson": "Badilisha muuzaji",
+    "staffHint": "Simu moja dukani? Kila mtu apate PIN yake ya kuuza: anaingia kwa \"Nani anauza?\" bila kutoka kwenye akaunti. Namba ya simu inahitajika tu kwa anayetumia simu yake mwenyewe.",
+    "tillOnly": "Simu ya duka tu",
+    "setPin": "Weka PIN ya kuuza",
+    "changePin": "Badilisha PIN",
+    "hasPin": "Ana PIN",
+    "pinSaved": "PIN ya {name} imehifadhiwa",
+    "phoneOptional": "si lazima; kwa anayetumia simu yake",
+    "addAndSetPin": "Ongeza na uweke PIN yake"
   }
 }

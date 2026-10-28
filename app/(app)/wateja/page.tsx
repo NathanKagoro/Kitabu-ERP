@@ -12,11 +12,13 @@ import { Field, TextInput } from '@/components/ui/field';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
 import { formatPhone, normalisePhone } from '@/lib/auth/phone';
-import { findByPhone, inAudience, offerRecipients, toCsv, toVCard, type Audience } from '@/lib/customers';
+import { findByPhone, hasOfferConsent, inAudience, offerRecipients, toCsv, toVCard, type Audience } from '@/lib/customers';
+import { ConsentCheck } from '@/components/customers/consent-check';
 import { businessDay, daysBetween } from '@/lib/date';
 import { downloadText } from '@/lib/export';
 import { createCustomer } from '@/lib/local/actions';
-import { useCustomers, useCustomerStats } from '@/lib/local/queries';
+import { useCustomers } from '@/lib/local/queries';
+import { useCustomerStats } from '@/lib/local/report-queries';
 import { cn } from '@/lib/cn';
 
 /**
@@ -25,7 +27,7 @@ import { cn } from '@/lib/cn';
  * them -- one personalised WhatsApp message each, or the whole list exported
  * as phone contacts for a WhatsApp Business broadcast list.
  */
-export default function CustomersPage() {
+function CustomersPageInner() {
   const t = useTranslations('clients');
   const tc = useTranslations('common');
   const ta = useTranslations('auth');
@@ -41,6 +43,7 @@ export default function CustomersPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [consent, setConsent] = useState(false);
 
   const today = businessDay();
   const list = useMemo(() => {
@@ -58,7 +61,8 @@ export default function CustomersPage() {
     if (phone.trim() && !normalisePhone(phone)) return setError(ta('invalidPhone'));
     const existing = phone.trim() ? findByPhone(customers ?? [], phone) : null;
     if (existing) return setError(t('alreadyThere', { name: existing.name }));
-    await createCustomer({ businessId, name, phone: phone.trim() ? normalisePhone(phone) : null });
+    await createCustomer({ businessId, name, phone: phone.trim() ? normalisePhone(phone) : null, offersConsent: consent });
+    setConsent(false);
     setName('');
     setPhone('');
     setAdding(false);
@@ -134,7 +138,7 @@ export default function CustomersPage() {
                       {days !== null ? ` · ${t('lastSeen', { days })}` : ''}
                     </span>
                   </span>
-                  {customer.noOffers ? <Badge>{t('noOffersBadge')}</Badge> : null}
+                  {hasOfferConsent(customer) ? <Badge tone="brand">{t('offersBadge')}</Badge> : null}
                   {s ? <Money value={s.spent} className="text-sm font-semibold text-ink-soft" /> : null}
                   <ChevronRight size={20} className="shrink-0 text-ink-faint" />
                 </Link>
@@ -150,6 +154,7 @@ export default function CustomersPage() {
           <Field label={tc('phone')} error={error}>
             {(id) => <TextInput id={id} type="tel" inputMode="tel" placeholder={ta('phonePlaceholder')} value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} />}
           </Field>
+          <ConsentCheck checked={consent} onChange={setConsent} />
           <Button size="lg" block disabled={!name.trim()} onClick={() => void add()}>
             {tc('save')}
           </Button>
@@ -175,7 +180,7 @@ export default function CustomersPage() {
             size="lg"
             block
             onClick={() => {
-              downloadText(`${fileBase}.csv`, toCsv(list.map((c) => ({ name: c.name, phone: c.phone, stats: stats?.get(c.id), noOffers: c.noOffers }))));
+              downloadText(`${fileBase}.csv`, toCsv(list.map((c) => ({ name: c.name, phone: c.phone, stats: stats?.get(c.id), noOffers: c.noOffers, offersConsentAt: c.offersConsentAt }))));
               setExporting(false);
             }}
           >
@@ -185,4 +190,19 @@ export default function CustomersPage() {
       </Sheet>
     </>
   );
+}
+
+/** Owners and managers only: the customer list is the shop's, not the till's. */
+export default function CustomersPage() {
+  const { can } = useApp();
+  const tg = useTranslations('errors');
+  if (!can('customerList')) {
+    return (
+      <>
+        <PageHeader title="" />
+        <EmptyState title={tg('noAccess')} />
+      </>
+    );
+  }
+  return <CustomersPageInner />;
 }

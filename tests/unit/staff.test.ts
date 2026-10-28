@@ -15,7 +15,7 @@ describe('sales by staff member', () => {
 
   it('adds up each person’s sales, best first', () => {
     const rows = salesByStaff([sale('owner', 10000), sale('juma', 25000), sale('juma', 5000), sale('owner', 2000)]);
-    expect(rows.map((r) => [r.userId, r.sales, r.total])).toEqual([
+    expect(rows.map((r) => [r.personId, r.sales, r.total])).toEqual([
       ['juma', 2, 30000],
       ['owner', 2, 12000],
     ]);
@@ -42,7 +42,23 @@ describe('sales by staff member', () => {
 
   it('sales from before staff logins existed are kept, under no one', () => {
     const rows = salesByStaff([sale(null, 500)]);
-    expect(rows).toEqual([{ userId: null, sales: 1, total: 500, cash: 0, voided: 0, voidedValue: 0 }]);
+    expect(rows).toEqual([{ personId: null, sales: 1, total: 500, cash: 0, voided: 0, voidedValue: 0 }]);
+  });
+
+  it('on a shared phone, sales go to the person at the till, not the login', () => {
+    const rows = salesByStaff(
+      [
+        { createdBy: 'owner-login', memberId: 'juma', total: 8000, status: 'complete' as const },
+        { createdBy: 'owner-login', memberId: 'neema', total: 5000, status: 'complete' as const },
+        { createdBy: 'owner-login', memberId: null, total: 2000, status: 'complete' as const }, // before 0.5
+      ],
+      [{ createdBy: 'owner-login', memberId: 'juma', amount: 8000, method: 'cash' as const, direction: 'in' as const, deletedAt: null }],
+      new Map([['owner-login', 'neema']]) // the owner's login is Neema's membership
+    );
+    expect(rows.map((r) => [r.personId, r.total, r.cash])).toEqual([
+      ['juma', 8000, 8000],
+      ['neema', 7000, 0],
+    ]);
   });
 
   it('share of the period', () => {

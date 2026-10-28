@@ -7,11 +7,17 @@ const c = (id: string, name: string, phone: string | null, over: Record<string, 
   name,
   phone,
   noOffers: false,
+  offersConsentAt: '2026-10-01T10:00:00Z',
   deletedAt: null,
   ...over,
 });
 
 describe('who gets an offer', () => {
+  it('opt-in: no recorded agreement, no offers', () => {
+    expect(offerRecipients([c('1', 'Asha', '0712345678', { offersConsentAt: null })])).toEqual([]);
+    expect(offerRecipients([c('1', 'Asha', '0712345678', { noOffers: true })])).toEqual([]);
+  });
+
   it('valid numbers only, each person once, never someone who said no', () => {
     const list = offerRecipients([
       c('1', 'Asha', '0712 345 678'),
@@ -63,6 +69,7 @@ describe('exports', () => {
   it('a spreadsheet, with awkward names quoted', () => {
     const csv = toCsv([{ name: 'Asha "Mama" J', phone: '0712345678', stats: { sales: 2, spent: 20500, lastAt: '2026-10-09T10:00:00Z' } }]);
     expect(csv.split('\n')[1]).toBe('"Asha ""Mama"" J",0712 345 678,2,20500,2026-10-09,');
+    expect(toCsv([{ name: 'B', phone: null, offersConsentAt: '2026-10-05T08:00:00Z' }]).split('\n')[1]).toBe('B,,0,0,,2026-10-05');
   });
 });
 

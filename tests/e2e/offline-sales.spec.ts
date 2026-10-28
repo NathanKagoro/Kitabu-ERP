@@ -263,3 +263,61 @@ test('the sales screen fits the data budget on a cold load', async ({ page }) =>
   expect(firstLoadKb).toBeLessThan(210);
   });
 });
+
+test('a shared phone: duplicates are caught, a cashier takes the till with a PIN, and the sale is theirs', async ({ page }) => {
+  const server = await fakeSupabase(page);
+  await firstSignIn(page);
+
+  // Bulk entry: a product the shop already has, and one typed twice.
+  await page.goto('/bidhaa/ingiza/');
+  await page.getByLabel('Jina la bidhaa').fill('lipstick ');
+  await page.getByLabel('Rangi / shade').fill('red 01');
+  await expect(page.getByText('Bidhaa hii tayari iko kwenye bidhaa zako', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Ondoa mstari huu' }).click();
+  await page.getByLabel('Jina la bidhaa').fill('Mascara');
+  await page.getByLabel('Rangi / shade').fill('Black');
+  await page.getByLabel('Idadi', { exact: true }).fill('3');
+  await page.getByRole('button', { name: 'Bidhaa nyingine' }).click();
+  await page.getByLabel('Jina la bidhaa').nth(1).fill('MASCARA');
+  await page.getByLabel('Rangi / shade').nth(1).fill('black');
+  await page.getByLabel('Idadi', { exact: true }).nth(1).fill('2');
+  await expect(page.getByText('Mstari 1 unajirudia', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Hifadhi zote/ })).toBeDisabled();
+  await page.getByRole('button', { name: 'Unganisha na mstari wa 1' }).click();
+  await expect(page.getByLabel('Idadi', { exact: true })).toHaveValue('5');
+  await expect(page.getByRole('button', { name: /Hifadhi zote \(1\)/ })).toBeEnabled();
+
+  // Staff: Juma has no phone of his own, only a till PIN.
+  await page.goto('/wafanyakazi/');
+  await page.getByRole('button', { name: 'Mwalike mfanyakazi' }).click();
+  await page.getByLabel('Jina').fill('Juma');
+  await page.getByRole('button', { name: 'Ongeza na uweke PIN yake' }).click();
+  for (const round of [0, 1]) {
+    void round;
+    for (const digit of '5555') await page.getByRole('button', { name: digit, exact: true }).click();
+  }
+  await expect(page.getByText('Ana PIN').first()).toBeVisible();
+
+  // The till: switch to Juma with his PIN, sell.
+  await page.goto('/mauzo/');
+  await page.getByRole('button', { name: 'Badilisha muuzaji' }).click();
+  await expect(page.getByText('Nani anauza?')).toBeVisible();
+  await page.getByRole('button', { name: /Juma/ }).click();
+  for (const digit of '9999') await page.getByRole('button', { name: digit, exact: true }).click();
+  await expect(page.getByText('PIN si sahihi')).toBeVisible();
+  for (const digit of '5555') await page.getByRole('button', { name: digit, exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Badilisha muuzaji' })).toContainText('Juma');
+
+  await page.getByRole('button', { name: /Red 01/ }).first().click();
+  await page.getByRole('button', { name: 'Lipa taslimu' }).click();
+  await expect(page.getByText('Imehifadhiwa!')).toBeVisible();
+  // Offers only with the customer's say-so: the tick starts empty.
+  await page.getByRole('button', { name: 'Mhifadhi mteja kwa ofa' }).click();
+  await expect(page.getByRole('checkbox', { name: /Amekubali kupokea ofa/ })).not.toBeChecked();
+
+  type Row = Record<string, unknown>;
+  const rows = (table: string) => [...(server.rows.get(table)?.values() ?? [])] as Row[];
+  await expect.poll(() => rows('members').find((m) => m.name === 'Juma')?.id, { timeout: 20_000 }).toBeTruthy();
+  const jumaId = rows('members').find((m) => m.name === 'Juma')!.id;
+  await expect.poll(() => rows('sales').map((sale) => sale.member_id), { timeout: 20_000 }).toContain(jumaId);
+});

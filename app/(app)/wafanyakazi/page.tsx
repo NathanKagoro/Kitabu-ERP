@@ -1,42 +1,54 @@
 'use client';
 
 import { useLiveQuery } from 'dexie-react-hooks';
-import { TrendingUp, UserPlus } from '@/components/icons';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
+import { KeyRound, TrendingUp, UserPlus } from '@/components/icons';
+import { SetupCodeSheet, type IssuedCode } from '@/components/setup-code-sheet';
 import { Badge, EmptyState, OptionGrid, PageHeader } from '@/components/ui/bits';
 import { Button } from '@/components/ui/button';
 import { Field, TextInput } from '@/components/ui/field';
 import { Sheet } from '@/components/ui/sheet';
 import { useToast } from '@/components/ui/toast';
+import { issueCode } from '@/lib/auth/accounts';
 import { formatPhone, normalisePhone } from '@/lib/auth/phone';
+import { isDemo } from '@/lib/auth/session';
+import { personName } from '@/lib/auth/till';
 import { nowIso } from '@/lib/date';
 import { db } from '@/lib/local/db';
 import { persist } from '@/lib/local/write';
-import type { Member, MemberRole } from '@/lib/types';
-import { issueCode } from '@/lib/auth/accounts';
-import { isDemo } from '@/lib/auth/session';
 import { sync } from '@/lib/sync/engine';
-import { SetupCodeSheet, type IssuedCode } from '@/components/setup-code-sheet';
+import type { Member, MemberRole } from '@/lib/types';
 import { uuidv7 } from '@/lib/uuid';
 
+const PinLock = dynamic(() => import('@/components/pin-lock').then((m) => m.PinLock));
+
 /**
- * Adding someone makes a member row (works offline), then asks the server for
- * their first login: a setup code the owner hands over, by WhatsApp or by
- * reading it out. They sign in with their phone number and that code, and
- * choose a password. "New code" resets a forgotten password the same way.
- * In the demo there is no server, so there are no codes.
+ * Staff. Two ways to work, and a person can have both:
+ *
+ *   - On the shop's own phone: a name and a 4-digit till PIN, set here with
+ *     the person standing there. They take the till with "Nani anauza?" and
+ *     every sale is theirs. No phone number, no login needed.
+ *   - On their own phone: a phone number, then a setup code (Pata namba) for
+ *     their own login. In the demo there is no server, so no codes.
+ *
+ * Adding someone works offline; a code needs a connection.
  */
 export default function StaffPage() {
   const t = useTranslations('staff');
   const tc = useTranslations('common');
   const ta = useTranslations('auth');
-  const toast = useToast();
-  const { businessId, member: me, can } = useApp();
+  const tac = useTranslations('accounts');
   const tss = useTranslations('staffSales');
+  const tt = useTranslations('till');
+  const toast = useToast();
+  const { businessId, loginMember: me, can, business } = useApp();
+  const demo = isDemo();
+
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -44,9 +56,12 @@ export default function StaffPage() {
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<IssuedCode | null>(null);
   const [issuing, setIssuing] = useState<string | null>(null);
-  const tac = useTranslations('accounts');
-  const { business } = useApp();
-  const demo = isDemo();
+  const [settingPin, setSettingPin] = useState<Member | null>(null);
+
+  const members = useLiveQuery(
+    async () => (businessId ? (await db().members.where('businessId').equals(businessId).toArray()).filter((m) => m.active) : []),
+    [businessId]
+  );
 
   /** Sync first (the server must have the row), then ask for a code. */
   const giveCode = async (m: Member) => {
@@ -65,21 +80,19 @@ export default function StaffPage() {
     setIssued({ name: m.name ?? null, phone: m.phone ?? null, code: result.code, shop: business?.name ?? '' });
   };
 
-  const members = useLiveQuery(
-    async () => (businessId ? (await db().members.where('businessId').equals(businessId).toArray()).filter((m) => m.active) : []),
-    [businessId]
-  );
-
-  const invite = async () => {
-    const normalised = normalisePhone(phone);
-    if (!normalised) return setError(ta('invalidPhone'));
+  const add = async () => {
+    setError(null);
     if (!businessId) return;
+    const normalised = phone.trim() ? normalisePhone(phone) : null;
+    if (phone.trim() && !normalised) return setError(ta('invalidPhone'));
+    // Someone on the shop phone needs a name to pick from the list.
+    if (!name.trim()) return setError(t('needName'));
     const at = nowIso();
     const row: Member = {
       id: uuidv7(),
       businessId,
       userId: null,
-      name: name.trim() || null,
+      name: name.trim(),
       phone: normalised,
       role,
       pinHash: null,
@@ -92,9 +105,27 @@ export default function StaffPage() {
     setOpen(false);
     setName('');
     setPhone('');
-    if (demo) return toast(t('invited'));
-    await giveCode(row);
+    // Their till PIN, straight away, while they are standing there.
+    setSettingPin(row);
   };
+
+  if (settingPin) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-paper">
+        <PinLock
+          mode="set"
+          target={settingPin}
+          onCancel={() => setSettingPin(null)}
+          onDone={() => {
+            const person = settingPin;
+            setSettingPin(null);
+            toast(tt('pinSaved', { name: personName(person, '') }));
+            if (person.phone && !demo && !person.userId) void giveCode(person);
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -106,6 +137,7 @@ export default function StaffPage() {
           </Button>
         }
       />
+      <p className="px-4 pt-3 text-sm text-ink-soft">{tt('staffHint')}</p>
       {members && members.length > 1 && can('viewStaffSales') ? (
         <div className="px-3 pt-3">
           <Link
@@ -118,44 +150,60 @@ export default function StaffPage() {
         </div>
       ) : null}
       {members && members.length <= 1 ? <EmptyState title={t('empty')} /> : null}
-      <ul className="divide-y divide-line">
-        {members?.map((m) => (
-          <li key={m.id} className="flex min-h-16 items-center gap-3 px-4 py-2">
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{m.name ?? (m.phone ? formatPhone(m.phone) : '—')}</span>
-              <span className="text-sm text-ink-faint">{t(`roleHints.${m.role}`)}</span>
-            </span>
-            {!m.userId ? <Badge tone="info">{t('invited')}</Badge> : null}
-            {!demo && m.id !== me?.id && m.role !== 'owner' ? (
-              <Button variant="ghost" size="sm" disabled={issuing === m.id} onClick={() => void giveCode(m)}>
-                {issuing === m.id ? tc('loading') : m.userId ? tac('newCode') : tac('getCode')}
-              </Button>
-            ) : null}
-            <Badge tone={m.role === 'owner' ? 'brand' : 'plain'}>{t(`roles.${m.role}`)}</Badge>
-            {m.id !== me?.id && m.role !== 'owner' ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-loss"
-                onClick={() => {
-                  if (window.confirm(t('removeConfirm', { name: m.name ?? m.phone ?? '' }))) {
-                    void persist('members', { ...m, active: false, updatedAt: nowIso() });
-                  }
-                }}
-              >
-                {t('remove')}
-              </Button>
-            ) : null}
-          </li>
-        ))}
+      <ul className="mt-3 divide-y divide-line border-y border-line bg-surface">
+        {members?.map((m) => {
+          const isMe = m.id === me?.id;
+          const manageable = !isMe && m.role !== 'owner';
+          return (
+            <li key={m.id} className="space-y-2 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold">{personName(m, '—')}</span>
+                  <span className="block truncate text-sm text-ink-faint">
+                    {m.phone ? formatPhone(m.phone) : tt('tillOnly')} · {t(`roleHints.${m.role}`)}
+                  </span>
+                </span>
+                <Badge tone={m.role === 'owner' ? 'brand' : 'plain'}>{t(`roles.${m.role}`)}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {(isMe || manageable) && (
+                  <Button variant="secondary" size="sm" onClick={() => setSettingPin(m)}>
+                    <KeyRound size={16} />
+                    {m.pinHash ? tt('changePin') : tt('setPin')}
+                  </Button>
+                )}
+                {!demo && manageable && m.phone ? (
+                  <Button variant="ghost" size="sm" disabled={issuing === m.id} onClick={() => void giveCode(m)}>
+                    {issuing === m.id ? tc('loading') : m.userId ? tac('newCode') : tac('getCode')}
+                  </Button>
+                ) : null}
+                {m.pinHash ? <Badge tone="info">{tt('hasPin')}</Badge> : null}
+                {manageable ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="ml-auto text-loss"
+                    onClick={() => {
+                      if (window.confirm(t('removeConfirm', { name: m.name ?? m.phone ?? '' }))) {
+                        void persist('members', { ...m, active: false, updatedAt: nowIso() });
+                      }
+                    }}
+                  >
+                    {t('remove')}
+                  </Button>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       <Sheet open={open} onClose={() => setOpen(false)} title={t('invite')}>
         <div className="space-y-4 p-4">
-          <Field label={tc('name')} hint={tc('optional')}>
-            {(id) => <TextInput id={id} value={name} onChange={(e) => setName(e.target.value)} />}
+          <Field label={tc('name')}>
+            {(id) => <TextInput id={id} autoFocus value={name} onChange={(e) => { setName(e.target.value); setError(null); }} />}
           </Field>
-          <Field label={t('phoneLabel')} error={error}>
+          <Field label={t('phoneLabel')} hint={tt('phoneOptional')} error={error}>
             {(id) => <TextInput id={id} type="tel" inputMode="tel" value={phone} onChange={(e) => { setPhone(e.target.value); setError(null); }} />}
           </Field>
           <div className="space-y-1.5">
@@ -167,8 +215,8 @@ export default function StaffPage() {
               options={(['manager', 'cashier'] as const).map((r) => ({ value: r, label: t(`roles.${r}`), hint: t(`roleHints.${r}`) }))}
             />
           </div>
-          <Button size="lg" block onClick={() => void invite()}>
-            {t('invite')}
+          <Button size="lg" block onClick={() => void add()}>
+            {tt('addAndSetPin')}
           </Button>
         </div>
       </Sheet>

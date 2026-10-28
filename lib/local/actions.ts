@@ -1,6 +1,5 @@
 import { businessDay, nowIso } from '../date';
-import { receiptToken, uuidv7 } from '../uuid';
-import { buildSaleLines, cartTotal, clampDiscount, settleSale, type CartLine, type Tender } from '../calc/sale';
+import { uuidv7 } from '../uuid';
 import { stockOnHand, wasteCost, weightedAverageCost } from '../calc/stock';
 import type {
   Customer,
@@ -29,118 +28,11 @@ import { persist, persistAll } from './write';
  * seeder and any future import all go through the same door.
  */
 
-interface Actor {
-  businessId: string;
-  userId?: string | null;
-}
-
 // --- Sales -----------------------------------------------------------------
-
-export interface RecordSaleInput extends Actor {
-  lines: readonly CartLine[];
-  discount?: number;
-  tenders: readonly Tender[];
-  customerId?: string | null;
-  note?: string | null;
-  /** Injected in tests; defaults to now. */
-  at?: string;
-}
-
-export interface RecordSaleResult {
-  sale: Sale;
-  total: number;
-}
-
-export async function recordSale(input: RecordSaleInput): Promise<RecordSaleResult> {
-  const { businessId, userId = null, lines, tenders, customerId = null, note = null } = input;
-  if (lines.length === 0) throw new Error('A sale needs at least one line');
-
-  const at = input.at ?? nowIso();
-  const saleId = uuidv7();
-  const discount = clampDiscount(
-    lines.reduce((sum, line) => sum + Math.round(line.qty * line.unitPrice), 0),
-    input.discount ?? 0
-  );
-  const total = cartTotal(lines, discount);
-
-  const sale: Sale = {
-    id: saleId,
-    businessId,
-    customerId,
-    total,
-    discount,
-    status: 'complete',
-    voidReason: null,
-    receiptToken: receiptToken(),
-    note,
-    createdBy: userId,
-    clientCreatedAt: at,
-    createdAt: at,
-    updatedAt: at,
-  };
-
-  const saleLines = buildSaleLines(lines, discount, {
-    saleId,
-    businessId,
-    lineId: () => uuidv7(),
-  });
-
-  const settled = settleSale(total, tenders);
-  const payments: Payment[] = settled.map((tender) => ({
-    id: uuidv7(),
-    businessId,
-    saleId,
-    customerId,
-    supplierId: null,
-    purchaseId: null,
-    documentId: null,
-    direction: 'in',
-    method: tender.method,
-    amount: tender.amount,
-    reference: tender.reference ?? null,
-    note: null,
-    createdBy: userId,
-    clientCreatedAt: at,
-    createdAt: at,
-    deletedAt: null,
-  }));
-
-  if (payments.some((p) => p.method === 'credit' && !p.customerId)) {
-    throw new Error('A credit sale needs a customer');
-  }
-
-  const tracked = await trackedProducts(
-    businessId,
-    lines.map((line) => line.productId).filter((id): id is string => !!id)
-  );
-
-  const movements: StockMovement[] = [];
-  for (const line of lines) {
-    if (!line.productId || !tracked.has(line.productId)) continue;
-    movements.push({
-      id: uuidv7(),
-      businessId,
-      productId: line.productId,
-      qty: -line.qty,
-      type: 'sale',
-      reason: null,
-      refId: saleId,
-      unitCost: line.unitCost ?? null,
-      note: null,
-      createdAt: at,
-      createdBy: userId,
-    });
-  }
-
-  await persistAll([
-    { table: 'sales', rows: [sale] },
-    { table: 'saleLines', rows: saleLines },
-    { table: 'payments', rows: payments },
-    { table: 'stockMovements', rows: movements },
-  ]);
-
-  return { sale, total };
-}
+// recordSale and the Actor type live in ./sale, so the sales screen loads only
+// what it needs to take a sale.
+export { recordSale, type Actor, type RecordSaleInput, type RecordSaleResult } from './sale';
+import type { Actor } from './sale';
 
 /**
  * Voiding never deletes. The sale is marked void, its payments are hidden from
@@ -191,7 +83,7 @@ export async function voidSale(
 // --- Customers & credit ----------------------------------------------------
 
 export async function createCustomer(
-  input: Actor & { name: string; phone?: string | null; note?: string | null }
+  input: Actor & { name: string; phone?: string | null; note?: string | null; offersConsent?: boolean }
 ): Promise<Customer> {
   const at = nowIso();
   const customer: Customer = {
@@ -200,6 +92,9 @@ export async function createCustomer(
     name: input.name.trim(),
     phone: input.phone?.trim() || null,
     note: input.note?.trim() || null,
+    // Opt-in: only when the person at the till ticked that they agreed.
+    offersConsentAt: input.offersConsent && input.phone?.trim() ? at : null,
+    noOffers: false,
     createdAt: at,
     updatedAt: at,
     deletedAt: null,
@@ -242,6 +137,7 @@ export async function recordDebtPayment(
     reference: input.reference ?? null,
     note: input.note ?? null,
     createdBy: input.userId ?? null,
+    memberId: input.memberId ?? null,
     clientCreatedAt: at,
     createdAt: at,
     deletedAt: null,
@@ -471,7 +367,10 @@ export async function recordWaste(
   return waste;
 }
 
-/** A manual stock correction ("I counted, there are actually 12"). */
+/**
+ * A manual stock correction ("I counted, there are actually 12"). A reset to
+ * that number as of now, like a stock count (see lib/calc/stock.ts).
+ */
 export async function adjustStock(
   input: Actor & { productId: string; countedQty: number; note?: string | null }
 ): Promise<void> {
@@ -481,7 +380,8 @@ export async function adjustStock(
     .equals([input.businessId, input.productId])
     .toArray();
   const current = stockOnHand(movements);
-  const delta = Math.round((input.countedQty - current) * 1000) / 1000;
+  const counted = Math.round(input.countedQty * 1000) / 1000;
+  const delta = Math.round((counted - current) * 1000) / 1000;
   if (delta === 0) return;
 
   const at = nowIso();
@@ -495,6 +395,7 @@ export async function adjustStock(
     refId: null,
     unitCost: null,
     note: input.note ?? null,
+    setsQty: counted,
     createdAt: at,
     createdBy: input.userId ?? null,
   } satisfies StockMovement);
@@ -698,19 +599,6 @@ export async function openingCashFor(businessId: string, day: string): Promise<n
     .toArray();
   closes.sort((x, y) => y.date.localeCompare(x.date));
   return closes[0]?.countedCash ?? 0;
-}
-
-async function trackedProducts(
-  businessId: string,
-  productIds: readonly string[]
-): Promise<Set<string>> {
-  if (productIds.length === 0) return new Set();
-  const rows = await db().products.bulkGet([...new Set(productIds)]);
-  const tracked = new Set<string>();
-  for (const row of rows) {
-    if (row && row.businessId === businessId && row.trackStock) tracked.add(row.id);
-  }
-  return tracked;
 }
 
 /** Money we paid a supplier against what we owe them, not against one purchase. */

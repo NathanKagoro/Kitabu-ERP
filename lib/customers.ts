@@ -30,16 +30,21 @@ export function statsByCustomer(sales: readonly Pick<Sale, 'customerId' | 'total
 }
 
 /**
- * Who gets an offer: a valid mobile number, not opted out, each number once
- * (the same person entered twice gets one message).
+ * Who gets an offer: someone who agreed to (opt-in, with the date recorded --
+ * Tanzania's Personal Data Protection Act 2022 expects consent for marketing),
+ * has not since said stop, and has a valid mobile number. Each number once.
  */
-export function offerRecipients<T extends Pick<Customer, 'id' | 'name' | 'phone' | 'noOffers' | 'deletedAt'>>(
+export function hasOfferConsent(c: Pick<Customer, 'offersConsentAt' | 'noOffers'>): boolean {
+  return Boolean(c.offersConsentAt) && !c.noOffers;
+}
+
+export function offerRecipients<T extends Pick<Customer, 'id' | 'name' | 'phone' | 'noOffers' | 'deletedAt' | 'offersConsentAt'>>(
   customers: readonly T[]
 ): (T & { e164: string })[] {
   const seen = new Set<string>();
   const out: (T & { e164: string })[] = [];
   for (const customer of customers) {
-    if (customer.deletedAt || customer.noOffers) continue;
+    if (customer.deletedAt || !hasOfferConsent(customer)) continue;
     const e164 = customer.phone ? normalisePhone(customer.phone) : null;
     if (!e164 || seen.has(e164)) continue;
     seen.add(e164);
@@ -85,8 +90,10 @@ export function toVCard(customers: readonly { name: string; e164: string }[], sh
 
 const csvCell = (value: string) => (/[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
 
-export function toCsv(rows: readonly { name: string; phone: string | null | undefined; stats?: CustomerStats; noOffers?: boolean }[]): string {
-  const header = ['name', 'phone', 'purchases', 'spent_tzs', 'last_purchase', 'no_offers'];
+export function toCsv(
+  rows: readonly { name: string; phone: string | null | undefined; stats?: CustomerStats; noOffers?: boolean; offersConsentAt?: string | null }[]
+): string {
+  const header = ['name', 'phone', 'purchases', 'spent_tzs', 'last_purchase', 'offers_agreed_on'];
   const lines = rows.map((r) =>
     [
       r.name,
@@ -94,7 +101,7 @@ export function toCsv(rows: readonly { name: string; phone: string | null | unde
       String(r.stats?.sales ?? 0),
       String(r.stats?.spent ?? 0),
       r.stats?.lastAt?.slice(0, 10) ?? '',
-      r.noOffers ? 'yes' : '',
+      r.offersConsentAt && !r.noOffers ? r.offersConsentAt.slice(0, 10) : '',
     ]
       .map(csvCell)
       .join(',')

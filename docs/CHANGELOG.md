@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.5.0 — before real shops: honest stock checks, who's selling, offers by consent (2026-10-28)
+
+Fixes for gaps the 0.4 tests didn't catch.
+
+### Stock checks no longer blame sales that synced late
+- A count now **sets** stock to what was counted, as of the moment it was typed (`stock_movements.sets_qty`). A sale made before the count but synced afterwards no longer moves the counted figure, and one made after the count still comes off it.
+- Each typed figure keeps its own time, so a sale made while the count is going on is handled correctly.
+- Reports **recalculate** what was expected whenever a late sale arrives, and say how many items were corrected because sales from before the count arrived later. The count screen syncs first and warns when the phone has unsynced or stale data.
+- The shortfall is valued at **average cost** of the stock bought, not the last purchase price.
+
+### Who's selling (one phone, several people)
+- Each person gets a **4-digit till PIN** (Wafanyakazi → Ongeza, set on the spot). A phone number is only needed for someone using their own phone.
+- On a shared phone, opening the app asks **"Nani anauza?"**. The sales screen shows a chip with the current seller, and tapping it switches person.
+- Sales, payments and debt repayments record that person (`sales.member_id`, `payments.member_id`). Sales by staff counts them per person, merging older sales made under their login.
+- What a person can see follows their role. This is a lock on the phone, not a separate server account: the server still sees the phone's login.
+
+### Customer list and offers: owners and managers only
+- The customer list, downloads and offers are now hidden from cashiers (`customerList` permission). Cashiers still pick customers for credit and receipts.
+
+### Offers only with consent (PDPA 2022 safeguard)
+- An **"Amekubali kupokea ofa"** tick, unticked by default, wherever a number is taken: after a sale, on the customer list, and when adding a customer at payment. Ticking it stores the date (`customers.offers_consent_at`).
+- Offers and the contacts download include only customers who agreed. The spreadsheet has an `offers_agreed_on` column. The switch on a customer's page records or withdraws consent.
+- The offer message ends with "jibu STOP". Customers saved before 0.5 have no consent on record, so they need asking again.
+
+### Bulk entry catches duplicates
+- A product typed twice (ignoring case, spaces and accents; the same shade or size where the shop uses them) is flagged with **"Unganisha na mstari wa N"**, which adds the counts together. A product already in the shop is flagged too.
+- Saving waits until the duplicates are fixed, so stock is never split across two entries. This also applies to pasted lists.
+
+### Under the hood
+- Migration 0007 adds the four columns above.
+- New tests: one checks that every field the phone syncs is a real server column; others cover the till PIN, consent, duplicates and late-sync counts. There is an end-to-end test of the shared-phone flow. 206 unit/RLS tests and 3 end-to-end tests in total.
+- The sales screen loads less code: `recordSale` and the report hooks were split into their own modules. First load is 208.1 KB, against a 210 KB budget.
+
 ## 0.4.0 — the stock check, customers for offers, and sales by staff (2026-10-17)
 
 Built for the pitch: every visit leads with "N items missing, worth TZS X", and the cosmetics and hardware pitches promise customer offers and per-staff sales.

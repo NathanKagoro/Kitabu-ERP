@@ -225,6 +225,8 @@ export const stockMovements = pgTable(
     refId: uuid('ref_id'),
     unitCost: money('unit_cost'),
     note: text('note'),
+    /** On a stock count: the shelf held exactly this many at created_at (a reset point). */
+    setsQty: qtyCol('sets_qty'),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     createdBy: uuid('created_by'),
   },
@@ -245,6 +247,8 @@ export const customers = pgTable(
     note: text('note'),
     /** Asked not to get offers on WhatsApp. Still on the list for credit and receipts. */
     noOffers: boolean('no_offers').notNull().default(false),
+    /** When the customer agreed to get offers on WhatsApp. Null: no offers (opt-in, PDPA 2022). */
+    offersConsentAt: timestamp('offers_consent_at', { withTimezone: true }),
     ...rowStamps,
   },
   (t) => [index('customers_business_idx').on(t.businessId)]
@@ -285,6 +289,8 @@ export const sales = pgTable(
     receiptToken: text('receipt_token').notNull().unique(),
     note: text('note'),
     createdBy: uuid('created_by'),
+    /** The person at the till (a members row), which on a shared phone is not the signed-in login. */
+    memberId: uuid('member_id'),
     /** When the phone recorded it. May precede createdAt by days when offline. */
     clientCreatedAt: timestamp('client_created_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -338,6 +344,8 @@ export const payments = pgTable(
     reference: text('reference'),
     note: text('note'),
     createdBy: uuid('created_by'),
+    /** The person at the till (a members row), which on a shared phone is not the signed-in login. */
+    memberId: uuid('member_id'),
     clientCreatedAt: timestamp('client_created_at', { withTimezone: true }).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),

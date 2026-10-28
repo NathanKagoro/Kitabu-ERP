@@ -32,7 +32,8 @@ export default function StaffSalesPage() {
     if (!businessId) return null;
     const rows = await loadRange(businessId, addDays(today, -(range - 1)), today);
     const members = await db().members.where('businessId').equals(businessId).toArray();
-    return { totals: salesByStaff(rows.sales, rows.payments), members };
+    const loginToMember = new Map(members.filter((m) => m.userId).map((m) => [m.userId!, m.id]));
+    return { totals: salesByStaff(rows.sales, rows.payments, loginToMember), members };
   }, [businessId, today, range]);
 
   if (!can('viewStaffSales')) {
@@ -45,9 +46,9 @@ export default function StaffSalesPage() {
   }
 
   const whole = data?.totals.reduce((sum, row) => sum + row.total, 0) ?? 0;
-  const who = (userId: string | null) => {
-    if (!userId) return { name: t('unknown'), role: null };
-    const member = data?.members.find((m) => m.userId === userId);
+  const who = (personId: string | null) => {
+    if (!personId) return { name: t('unknown'), role: null };
+    const member = data?.members.find((m) => m.id === personId || m.userId === personId);
     return {
       name: member?.name ?? (member?.phone ? formatPhone(member.phone) : t('unknown')),
       role: member?.role ?? null,
@@ -80,10 +81,10 @@ export default function StaffSalesPage() {
           </section>
           <ul className="space-y-2 px-3 pb-6">
             {data.totals.map((row) => {
-              const person = who(row.userId);
+              const person = who(row.personId);
               const share = shareOf(row.total, whole);
               return (
-                <li key={row.userId ?? '__none'} className="card space-y-2 p-4">
+                <li key={row.personId ?? '__none'} className="card space-y-2 p-4">
                   <div className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0">
                       <span className="block truncate text-lg font-bold">{person.name}</span>

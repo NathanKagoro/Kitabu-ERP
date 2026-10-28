@@ -10,6 +10,7 @@ import { useApp } from '@/components/app-provider';
 import { CountReport } from '@/components/stock/count-report';
 import { EmptyState, PageHeader } from '@/components/ui/bits';
 import { db } from '@/lib/local/db';
+import { useRefreshedCounts } from '@/lib/local/report-queries';
 
 /** One stock-check report: /stoo/ripoti/?id=<count id>. */
 export default function CountReportRoute() {
@@ -29,13 +30,19 @@ function CountReportPage() {
   const { business, can } = useApp();
   // undefined while loading, null when there is no such count on this phone.
   const count = useLiveQuery(async () => (id ? ((await db().stockCounts.get(id)) ?? null) : null), [id]);
+  const refreshed = useRefreshedCounts(business?.id ?? null, count ? [count] : undefined);
 
   return (
     <>
       <PageHeader title={t('reportTitle')} />
       {count === undefined ? null : count && count.businessId === business?.id ? (
         <>
-          <CountReport count={count} shopName={business?.name ?? ''} />
+          <CountReport
+            count={count}
+            shopName={business?.name ?? ''}
+            lines={refreshed?.get(count.id)?.lines}
+            corrected={refreshed?.get(count.id)?.corrected}
+          />
           {firstRun ? (
             <div className="px-4 pb-6">
               <Link

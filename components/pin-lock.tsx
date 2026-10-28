@@ -13,6 +13,7 @@ import { signOut } from '@/lib/auth/session';
 import { markUnlocked } from '@/lib/auth/unlock';
 import { persist } from '@/lib/local/write';
 import { cn } from '@/lib/cn';
+import type { Member } from '@/lib/types';
 
 type Mode = 'set' | 'unlock';
 
@@ -20,7 +21,20 @@ type Mode = 'set' | 'unlock';
  * A 4-digit keypad rather than a text field: it is the same gesture as
  * unlocking M-Pesa, which is the interaction every user here already knows.
  */
-export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onDone?: () => void }) {
+export function PinLock({
+  mode,
+  name,
+  onDone,
+  target,
+  onCancel,
+}: {
+  mode: Mode;
+  name?: string;
+  onDone?: () => void;
+  /** Whose PIN to set; defaults to the person at the till. Used to give staff their till PIN. */
+  target?: Member;
+  onCancel?: () => void;
+}) {
   const t = useTranslations('pin');
   const tc = useTranslations('common');
   const router = useRouter();
@@ -63,9 +77,10 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
           return;
         }
 
-        if (member) {
+        const who = target ?? member;
+        if (who) {
           const hash = await hashPin(pin);
-          await persist('members', { ...member, pinHash: JSON.stringify(hash) });
+          await persist('members', { ...who, pinHash: JSON.stringify(hash), updatedAt: new Date().toISOString() });
         }
         await markUnlocked();
         onDone?.();
@@ -73,7 +88,7 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
         setBusy(false);
       }
     },
-    [mode, member, firstPin, onDone, router, t]
+    [mode, member, target, firstPin, onDone, router, t]
   );
 
   const press = (digit: string) => {
@@ -92,7 +107,7 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
         <Logo size={48} className="mb-4" />
         <h1 className="text-2xl font-bold">{title}</h1>
         <p className="mt-1.5 text-ink-soft">
-          {mode === 'unlock' ? (name ? t('unlockSubtitle', { name }) : '') : t('setSubtitle')}
+          {mode === 'unlock' ? (name ? t('unlockSubtitle', { name }) : '') : target ? t('setForSubtitle', { name: target.name ?? '' }) : t('setSubtitle')}
         </p>
 
         <div className="mt-10 flex justify-center gap-4" aria-hidden>
@@ -143,6 +158,7 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
             block
             className="mt-6"
             onClick={() => {
+              if (onCancel && firstPin === null) return onCancel();
               setFirstPin(null);
               setEntry('');
               setError(null);
@@ -156,7 +172,7 @@ export function PinLock({ mode, name, onDone }: { mode: Mode; name?: string; onD
   );
 }
 
-function Key({
+export function Key({
   label,
   onClick,
   ariaLabel,

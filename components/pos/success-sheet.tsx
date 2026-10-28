@@ -15,6 +15,7 @@ import { Field, TextInput } from '@/components/ui/field';
 import { formatPhone, normalisePhone } from '@/lib/auth/phone';
 import { findByPhone } from '@/lib/customers';
 import { createCustomer } from '@/lib/local/actions';
+import { ConsentCheck } from '@/components/customers/consent-check';
 import { db } from '@/lib/local/db';
 
 export interface CompletedSale {
@@ -31,12 +32,14 @@ export function SuccessSheet({ done, onClose }: { done: CompletedSale | null; on
   const [capturing, setCapturing] = useState(false);
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
+  const [consent, setConsent] = useState(false);
   if (!done) return null;
 
   const close = () => {
     setCapturing(false);
     setPhone('');
     setName('');
+    setConsent(false);
     onClose();
   };
 
@@ -49,7 +52,7 @@ export function SuccessSheet({ done, onClose }: { done: CompletedSale | null; on
     if (!businessId || !e164) return;
     const all = await db().customers.where('businessId').equals(businessId).toArray();
     if (findByPhone(all, e164)) return;
-    await createCustomer({ businessId, name: name.trim() || formatPhone(e164), phone: e164 });
+    await createCustomer({ businessId, name: name.trim() || formatPhone(e164), phone: e164, offersConsent: consent });
   };
   const typedPhone = normalisePhone(phone);
 
@@ -77,6 +80,7 @@ export function SuccessSheet({ done, onClose }: { done: CompletedSale | null; on
             <Field label={tc('name')} hint={tc('optional')}>
               {(id) => <TextInput id={id} value={name} onChange={(e) => setName(e.target.value)} />}
             </Field>
+            <ConsentCheck checked={consent} onChange={setConsent} />
             <a
               href={typedPhone ? whatsappLink(text, typedPhone) : undefined}
               target="_blank"

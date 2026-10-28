@@ -56,7 +56,7 @@ export default function MorePage() {
     {
       title: t('more.sections.money'),
       items: [
-        { href: '/wateja', label: t('clients.title'), icon: <Users size={22} />, permission: 'manageCustomers' },
+        { href: '/wateja', label: t('clients.title'), icon: <Users size={22} />, permission: 'customerList' },
         { href: '/matumizi', label: t('expenses.title'), icon: <Receipt size={22} />, feature: 'expenses', permission: 'recordExpense' },
         { href: '/faida', label: t('profit.title'), icon: <TrendingUp size={22} />, permission: 'viewProfit' },
         { href: '/wauzaji', label: t('suppliers.title'), icon: <Truck size={22} />, feature: 'suppliers', permission: 'recordPurchase' },

@@ -1,5 +1,5 @@
 import { summariseCount, type CountLine } from '../calc/stock-count';
-import { stockOnHand } from '../calc/stock';
+import { averageUnitCost, stockAsOf } from '../calc/stock';
 import { nowIso } from '../date';
 import { productLabel } from '../products';
 import type { Product, StockCount, StockCountKind, StockMovement } from '../types';
@@ -24,12 +24,20 @@ export interface CountedItem {
   counted: number;
   /** Only for kind 'opening': the owner's estimate or the delivery note. */
   expected?: number | null;
+  /**
+   * When this shelf line was counted (the moment its number was typed). The
+   * stock is set to the count as of then, so a sale from before it that syncs
+   * later is not taken off twice, and one after it is still taken off.
+   */
+  countedAt?: string;
 }
 
 /**
- * Saves a stock check and, for a normal check, sets the ledger to what was
- * counted: one 'adjust' movement per product that differs, pointing back at
- * the count. One transaction, so the report and the stock never disagree.
+ * Saves a stock check and, for a normal check, sets the stock to what was
+ * counted: one reset movement per product (`setsQty`, dated when that line
+ * was counted) pointing back at the count. One transaction, so the report and
+ * the stock never disagree. The movement's `qty` keeps the difference as this
+ * phone saw it, for the record; on-hand is worked out from `setsQty`.
  *
  * 'opening' (setup day) only records the report: the counted stock was
  * already written as opening stock by addProductsInBulk.
@@ -48,10 +56,12 @@ export async function recordStockCount(
   for (const [index, item] of items.entries()) {
     const product = products[index];
     if (!product || product.businessId !== input.businessId) continue;
-    const onHand = stockOnHand(
-      await database.stockMovements.where('[businessId+productId]').equals([input.businessId, product.id]).toArray()
-    );
+    const ledger = await database.stockMovements.where('[businessId+productId]').equals([input.businessId, product.id]).toArray();
+    // Never after the save, never in the future of this phone's clock.
+    const countedAt = item.countedAt && item.countedAt < at ? item.countedAt : at;
+    const onHand = stockAsOf(ledger, countedAt);
     const counted = Math.round(item.counted * 1000) / 1000;
+    const unitCost = averageUnitCost(ledger, product.cost);
     // A ledger below zero means sales were recorded before the stock was;
     // nothing can be "missing" from a shelf that was never stocked.
     const expected = input.kind === 'opening' ? Math.max(0, item.expected ?? counted) : Math.max(0, onHand);
@@ -60,12 +70,15 @@ export async function recordStockCount(
       name: productLabel(product),
       expected,
       counted,
-      unitCost: product.cost != null && product.cost > 0 ? product.cost : null,
+      unitCost,
       unitPrice: product.price,
+      countedAt,
     });
 
+    // Every counted line is a reset, even one that matched: it is the point
+    // late-syncing sales from before the count are measured against.
     const delta = Math.round((counted - onHand) * 1000) / 1000;
-    if (input.kind === 'check' && delta !== 0) {
+    if (input.kind === 'check') {
       movements.push({
         id: uuidv7(),
         businessId: input.businessId,
@@ -74,9 +87,10 @@ export async function recordStockCount(
         type: 'adjust',
         reason: null,
         refId: countId,
-        unitCost: product.cost ?? null,
+        unitCost,
         note: 'count',
-        createdAt: at,
+        setsQty: counted,
+        createdAt: countedAt,
         createdBy: input.userId ?? null,
       });
     }

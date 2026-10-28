@@ -18,6 +18,8 @@ export interface CountLine {
   unitCost: number | null;
   /** Selling price per unit when counted (integer TZS). */
   unitPrice: number;
+  /** When this line was counted (ISO). */
+  countedAt?: string;
 }
 
 export interface CountSummary {
@@ -100,3 +102,41 @@ export function shortLines(lines: readonly CountLine[]): (CountLine & { missing:
  * nudge. Calendar days in Dar es Salaam, not 24-hour blocks.
  */
 export const RECOUNT_AFTER_DAYS = 14;
+
+/**
+ * The count's lines with "expected" worked out again from the ledger as it is
+ * now. A sale made on another phone before the shelf was counted, but synced
+ * after, was missing from the expected figure on the day -- so the report said
+ * "2 missing" for two lotions that were sold. Recomputing as of each line's
+ * counted moment turns that into what it was: sold, not lost.
+ *
+ * `movements` are this business's movements for the counted products; the
+ * count's own reset movements (refId = countId) are left out.
+ */
+export function refreshCountLines<
+  M extends { id: string; productId: string; qty: number; createdAt: string; refId?: string | null; setsQty?: number | null },
+>(
+  lines: readonly CountLine[],
+  movements: readonly M[],
+  countId: string,
+  countedAtFallback: string,
+  stockAsOf: (ledger: readonly M[], at: string) => number
+): { lines: CountLine[]; corrected: number } {
+  const byProduct = new Map<string, M[]>();
+  for (const m of movements) {
+    if (m.refId === countId) continue;
+    const list = byProduct.get(m.productId);
+    if (list) list.push(m);
+    else byProduct.set(m.productId, [m]);
+  }
+  let corrected = 0;
+  const refreshed = lines.map((line) => {
+    const ledger = byProduct.get(line.productId);
+    if (!ledger) return line;
+    const expected = Math.max(0, stockAsOf(ledger, line.countedAt ?? countedAtFallback));
+    if (Math.abs(expected - line.expected) < 0.0005) return line;
+    corrected += 1;
+    return { ...line, expected };
+  });
+  return { lines: refreshed, corrected };
+}

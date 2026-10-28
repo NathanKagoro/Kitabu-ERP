@@ -86,7 +86,10 @@ export async function createDemoBusiness(
   }
 
   const customers = [];
-  for (const c of CUSTOMERS) customers.push(await createCustomer({ businessId, name: c.name, phone: c.phone }));
+  // Most demo customers agreed to offers at the till; a few did not.
+  for (const [i, c] of CUSTOMERS.entries()) {
+    customers.push(await createCustomer({ businessId, name: c.name, phone: c.phone, offersConsent: i % 3 !== 2 }));
+  }
 
   const today = businessDay();
   const at = (day: string, hour: number) =>

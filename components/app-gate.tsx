@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import { useApp } from '@/components/app-provider';
 import { Logo } from '@/components/brand/logo';
@@ -13,6 +13,7 @@ import { isPaused } from '@/lib/shop-config';
 const PausedNotice = dynamic(() => import('@/components/paused-notice').then((m) => m.PausedNotice));
 
 const PinLock = dynamic(() => import('@/components/pin-lock').then((m) => m.PinLock));
+const WhoSelling = dynamic(() => import('@/components/who-selling').then((m) => m.WhoSelling));
 
 /**
  * Decides, once the local database has answered, whether this device is ready
@@ -20,8 +21,11 @@ const PinLock = dynamic(() => import('@/components/pin-lock').then((m) => m.PinL
  * phone with no signal opens straight to the sales screen.
  */
 export function AppGate({ children }: { children: ReactNode }) {
-  const { ready, userId, businessId, member, business, mustSetPassword } = useApp();
+  const { ready, userId, businessId, member, business, mustSetPassword, tillPeople } = useApp();
   const router = useRouter();
+  // Session unlock lives in sessionStorage, which React does not watch; this
+  // mirrors it so the till appears the moment the right PIN is entered.
+  const [unlocked, setUnlocked] = useState(() => typeof window !== 'undefined' && isUnlockedThisSession());
 
   useEffect(() => {
     if (!ready) return;
@@ -39,8 +43,10 @@ export function AppGate({ children }: { children: ReactNode }) {
 
   // A PIN is only a gate once one has been set; a new owner is not locked out
   // of their own data by a step they have not reached yet.
-  if (member?.pinHash && !isUnlockedThisSession()) {
-    return <PinLock mode="unlock" name={member.name ?? ''} />;
+  if (!unlocked && !isUnlockedThisSession()) {
+    // A phone the shop shares: whoever opens it says who they are.
+    if (tillPeople.length > 1) return <WhoSelling onDone={() => setUnlocked(true)} />;
+    if (member?.pinHash) return <PinLock mode="unlock" name={member.name ?? ''} onDone={() => setUnlocked(true)} />;
   }
 
   return <>{children}</>;

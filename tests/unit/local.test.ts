@@ -391,8 +391,9 @@ describe('recordStockCount', () => {
     // The ledger now agrees with the shelf, and the correction points at the count.
     expect(await onHand(red.id)).toBe(7);
     expect(await onHand(nivea.id)).toBe(6);
-    const adjust = (await db().stockMovements.where('refId').equals(count.id).toArray());
-    expect(adjust.map((m) => m.qty)).toEqual([-3]);
+    // One reset per counted line (a matching line is still a reset point).
+    const resets = await db().stockMovements.where('refId').equals(count.id).toArray();
+    expect(resets.map((m) => [m.qty, m.setsQty]).sort()).toEqual([[-3, 7], [0, 6]].sort());
   });
 
   it('an opening count compares with the owner’s estimate and leaves the ledger alone', async () => {
@@ -456,4 +457,129 @@ describe('every shop type starts with its own things', () => {
     expect(counts[1]!.linesShort).toBeGreaterThan(counts[0]!.linesShort);
     expect(counts[1]!.valueShortCost).toBeGreaterThan(0);
   }, 30_000);
+});
+
+describe('a count is right even when another phone syncs late', () => {
+  /** Setup day was an hour ago, as in a real shop: the stock existed before the count. */
+  const backdate = async (productId: string) => {
+    const hourAgo = new Date(Date.now() - 60 * 60_000).toISOString();
+    const rows = await db().stockMovements.where('productId').equals(productId).toArray();
+    await db().stockMovements.bulkPut(rows.map((m) => ({ ...m, createdAt: hourAgo })));
+  };
+
+  it('a cashier’s offline sale from before the count is sold, not missing, and not taken off twice', async () => {
+    const [lotion] = await actions.addProductsInBulk({
+      businessId,
+      unit: 'kipande',
+      trackStock: true,
+      rows: [{ name: 'Nivea', variant: '400ml', price: 12500, cost: 9000, qty: 12 }],
+    });
+    await backdate(lotion!.id);
+    const before = new Date(Date.now() - 10 * 60_000).toISOString(); // the cashier's sale, 10 minutes ago
+    const countedAt = new Date(Date.now() - 5 * 60_000).toISOString(); // the shelf, counted 5 minutes ago
+
+    // The owner counts 10 on her phone; the cashier's sale of 2 is not here yet.
+    const count = await actions.recordStockCount({ businessId, kind: 'check', items: [{ productId: lotion!.id, counted: 10, countedAt }] });
+    expect(count.unitsShort).toBe(2); // what her phone can know right now
+
+    // Tonight the cashier's phone syncs: the sale arrives, dated before the count.
+    await db().stockMovements.put({
+      id: crypto.randomUUID(),
+      businessId,
+      productId: lotion!.id,
+      qty: -2,
+      type: 'sale',
+      refId: crypto.randomUUID(),
+      createdAt: before,
+    });
+    const ledger = await db().stockMovements.where('productId').equals(lotion!.id).toArray();
+    // The shelf was counted without those two: stock stays at the count.
+    expect(stockOnHand(ledger)).toBe(10);
+
+    // And the report, read again, no longer calls them missing.
+    const { refreshCountLines, summariseCount } = await import('@/lib/calc/stock-count');
+    const { stockAsOf } = await import('@/lib/calc/stock');
+    const { lines } = refreshCountLines(count.lines, ledger, count.id, count.clientCreatedAt, stockAsOf);
+    expect(summariseCount(lines).unitsShort).toBe(0);
+  });
+
+  it('a sale while the count is open, after that shelf was counted, still comes off', async () => {
+    const [lotion] = await actions.addProductsInBulk({ businessId, unit: 'kipande', trackStock: true, rows: [{ name: 'Nivea', price: 12500, qty: 12 }] });
+    await backdate(lotion!.id);
+    const countedAt = new Date(Date.now() - 60_000).toISOString();
+    await actions.recordSale({ businessId, lines: [cartLine(lotion!.id, 1, 12500)], tenders: [{ method: 'cash', amount: 12500 }] });
+    await actions.recordStockCount({ businessId, kind: 'check', items: [{ productId: lotion!.id, counted: 12, countedAt }] });
+    expect(stockOnHand(await db().stockMovements.where('productId').equals(lotion!.id).toArray())).toBe(11);
+  });
+
+  it('shortfalls are valued at average cost, not the last delivery', async () => {
+    const [lotion] = await actions.addProductsInBulk({ businessId, unit: 'kipande', trackStock: true, rows: [{ name: 'Nivea', price: 12500, cost: 9000, qty: 10 }] });
+    await actions.recordPurchase({ businessId, lines: [{ productId: lotion!.id, qty: 10, totalCost: 110000 }] }); // 11,000 each
+    const count = await actions.recordStockCount({ businessId, kind: 'check', items: [{ productId: lotion!.id, counted: 18 }] });
+    expect(count.lines[0]!.unitCost).toBe(10000);
+    expect(count.valueShortCost).toBe(20000);
+  });
+});
+
+describe('0.5: who sold it, and offers consent, reach the server', () => {
+  it('the person at the till rides on the sale and its payment', async () => {
+    const product = await firstProduct();
+    const { sale } = await actions.recordSale({
+      businessId,
+      userId: 'owner-login',
+      memberId: 'juma',
+      lines: [cartLine(product.id, 1, 1000)],
+      tenders: [{ method: 'cash', amount: 1000 }],
+    });
+    await sync();
+    expect(server.tables.get('sales')!.get(sale.id)).toMatchObject({ created_by: 'owner-login', member_id: 'juma' });
+    const pay = [...server.tables.get('payments')!.values()].find((p) => p.sale_id === sale.id);
+    expect(pay).toMatchObject({ member_id: 'juma' });
+  });
+
+  it('consent is dated only when ticked and there is a number to send to', async () => {
+    const yes = await actions.createCustomer({ businessId, name: 'A', phone: '+255712000001', offersConsent: true });
+    const no = await actions.createCustomer({ businessId, name: 'B', phone: '+255712000002' });
+    const noPhone = await actions.createCustomer({ businessId, name: 'C', offersConsent: true });
+    expect(yes.offersConsentAt).toBeTruthy();
+    expect(no.offersConsentAt).toBeNull();
+    expect(noPhone.offersConsentAt).toBeNull();
+  });
+
+  it('every field the phone sends is a real column on the server', async () => {
+    const { getTableConfig } = await import('drizzle-orm/pg-core');
+    const schema = await import('@/db/schema');
+    const product = await firstProduct();
+    const customer = await actions.createCustomer({ businessId, name: 'Mama Asha', phone: '+255712000003', offersConsent: true });
+    await actions.recordSale({
+      businessId,
+      memberId: 'juma',
+      customerId: customer.id,
+      lines: [cartLine(product.id, 2, 1000, 600)],
+      tenders: [{ method: 'cash', amount: 1000 }, { method: 'credit', amount: 1000 }],
+    });
+    await actions.recordStockCount({ businessId, kind: 'check', items: [{ productId: product.id, counted: 5 }] });
+    await sync();
+
+    const columns = new Map<string, Set<string>>();
+    for (const value of Object.values(schema)) {
+      try {
+        const config = getTableConfig(value as Parameters<typeof getTableConfig>[0]);
+        columns.set(config.name, new Set(config.columns.map((c) => c.name)));
+      } catch {
+        // enums and relations, not tables
+      }
+    }
+    const unknown: string[] = [];
+    for (const call of server.calls) {
+      const known = columns.get(call.table);
+      if (!known) {
+        unknown.push(`table ${call.table}`);
+        continue;
+      }
+      for (const row of call.rows) for (const key of Object.keys(row)) if (!known.has(key)) unknown.push(`${call.table}.${key}`);
+    }
+    expect([...new Set(unknown)]).toEqual([]);
+    expect(server.calls.map((c) => c.table)).toEqual(expect.arrayContaining(['sales', 'payments', 'customers', 'stock_movements', 'stock_counts']));
+  });
 });

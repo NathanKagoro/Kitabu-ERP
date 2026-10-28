@@ -8,6 +8,17 @@ import { refreshPendingCount, startSync, subscribeToSync, sync, type SyncState }
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { cn } from '@/lib/cn';
 
+/** The live sync state, for screens that need to say "sync first". */
+export function useSyncState(): SyncState {
+  const [state, setState] = useState<SyncState>({ status: 'idle', pending: 0, lastSyncedAt: null, error: null });
+  useEffect(() => {
+    const unsubscribe = subscribeToSync(setState);
+    void refreshPendingCount();
+    return unsubscribe;
+  }, []);
+  return state;
+}
+
 /**
  * The spec asks for a visible sync state, and it matters for trust: someone
  * selling with no signal needs to see that their morning is safe, not wonder.

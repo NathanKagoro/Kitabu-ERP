@@ -100,7 +100,8 @@
     "currentPin": "Current PIN",
     "newPin": "New PIN",
     "forgot": "Forgot your PIN?",
-    "forgotHelp": "Sign out, then sign in again with your phone number."
+    "forgotHelp": "Sign out, then sign in again with your phone number.",
+    "setForSubtitle": "{name}'s till PIN. Let them type it: 4 digits."
   },
   "onboarding": {
     "welcomeTitle": "Welcome to Kitabu",
@@ -304,7 +305,12 @@
       "withExpected": "Do you know how many should be there?",
       "withExpectedHint": "The owner's estimate, or the last delivery note. We will show what is short today.",
       "expectedLabel": "Should be",
-      "expectedHint": "estimate or delivery note"
+      "expectedHint": "estimate or delivery note",
+      "dupRepeat": "You already typed this product on row {row}.",
+      "dupExists": "This product is already in your products. To change how many there are, use the stock check.",
+      "dupJoin": "Join with row {row}",
+      "dupRemove": "Remove this row",
+      "dupBlock": "{count, plural, one {1 row is a repeat. Fix it first.} other {# rows are repeats. Fix them first.}}"
     }
   },
   "prices": {
@@ -513,7 +519,8 @@
     "remove": "Remove",
     "removeConfirm": "Remove {name} from this business?",
     "invited": "Invited",
-    "empty": "It is just you here"
+    "empty": "It is just you here",
+    "needName": "Enter their name"
   },
   "settings": {
     "title": "Settings",
@@ -763,7 +770,11 @@
     "shareNoneShort": "Nothing missing.",
     "shareLine": "{qty} missing",
     "shareRecount": "We will count again on {date}.",
-    "continueSetup": "Continue: set prices and start selling"
+    "continueSetup": "Continue: set prices and start selling",
+    "syncingFirst": "Bringing in the other phones' sales first...",
+    "notSynced": "This phone hasn't synced. If there are other phones in the shop, get them online first. Sales that arrive later will correct the report.",
+    "syncedHint": "Sales from every phone that is online are in. Sales from offline phones will correct the report when they arrive.",
+    "correctedNote": "{count, plural, one {1 item corrected: sales made before the count arrived later. They were sold, not lost.} other {# items corrected: sales made before the count arrived later. They were sold, not lost.}}"
   },
   "clients": {
     "title": "Customers",
@@ -783,14 +794,13 @@
     "noPhone": "No number",
     "bought": "{count, plural, one {1 visit} other {# visits}}",
     "lastSeen": "{days, plural, =0 {came today} one {came yesterday} other {came # days ago}}",
-    "noOffersBadge": "No offers",
     "alreadyThere": "This number already belongs to {name}",
     "exportHint": "{count, plural, one {1 customer has a number and accepts offers.} other {# customers have a number and accept offers.}} The contacts file goes into the phone; then make a broadcast list in WhatsApp Business.",
     "exportContacts": "Phone contacts (for WhatsApp)",
     "exportSheet": "Full list (Excel)",
     "offerTitle": "Send an offer",
     "offerSubtitle": "Tap a name, WhatsApp opens with their message. Send, come back, carry on.",
-    "offerTemplate": "Hello '{jina}'! Today at '{duka}' we have a special offer for you. Come and see us!",
+    "offerTemplate": "Hello '{jina}'! Today at '{duka}' we have a special offer for you. Come and see us! (Reply STOP for no more messages.)",
     "messageLabel": "Message",
     "messageHint": "'{jina}' = the customer's name, '{duka}' = the shop",
     "preview": "This is what {name} will see:",
@@ -800,8 +810,11 @@
     "sent": "Sent",
     "send": "Send",
     "getsOffers": "Gets offers on WhatsApp",
-    "getsOffersHint": "Turn off if they asked not to get offers.",
-    "editDetails": "Change name or number"
+    "getsOffersHint": "Turn on only if the customer agreed. Turn off and they get no more offers.",
+    "editDetails": "Change name or number",
+    "consentLabel": "Agreed to receive offers",
+    "consentHint": "Tick only if the customer said yes themselves.",
+    "offersBadge": "Gets offers"
   },
   "staffSales": {
     "title": "Sales by staff",
@@ -815,5 +828,20 @@
     "share": "Share",
     "voided": "{count, plural, one {1 sale cancelled} other {# sales cancelled}}",
     "unknown": "Unknown (before logins)"
+  },
+  "till": {
+    "whoTitle": "Who's selling?",
+    "whoSubtitle": "Pick your name, then enter your PIN. Sales will be yours.",
+    "notMe": "Not me",
+    "enterPin": "Enter your PIN",
+    "switchPerson": "Change who's selling",
+    "staffHint": "One phone in the shop? Give everyone a till PIN: they take over with \"Who's selling?\" without signing out. A phone number is only needed for someone using their own phone.",
+    "tillOnly": "Shop phone only",
+    "setPin": "Set till PIN",
+    "changePin": "Change PIN",
+    "hasPin": "Has PIN",
+    "pinSaved": "{name}'s PIN is saved",
+    "phoneOptional": "optional; for someone using their own phone",
+    "addAndSetPin": "Add and set their PIN"
   }
 }

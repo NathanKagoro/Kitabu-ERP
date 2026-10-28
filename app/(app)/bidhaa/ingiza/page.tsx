@@ -5,7 +5,7 @@ import { STARTER_PRODUCTS } from '@/lib/onboarding/starter-products';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Suspense, useMemo, useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
 import { Copy, Plus, X } from '@/components/icons';
@@ -18,7 +18,7 @@ import { addProductsWithOpeningCount } from '@/lib/local/stock-count';
 import { db } from '@/lib/local/db';
 import { useProducts } from '@/lib/local/queries';
 import { formatTZS, parseTZS } from '@/lib/money';
-import { categoriesOf, parseBulkText } from '@/lib/products';
+import { categoriesOf, findDuplicates, parseBulkText } from '@/lib/products';
 import { presetOf } from '@/lib/shop-config';
 import { iconFor } from '@/lib/onboarding/starter-products';
 import { uuidv7 } from '@/lib/uuid';
@@ -79,7 +79,7 @@ function BulkEntryPage() {
   const asksVariant = preset.productFields.includes('variant') && preset.variantLabel !== null;
   const asksCategory = preset.productFields.includes('category');
   const tracksStock = show('stockTracking');
-  const categories = useMemo(() => [...new Set([...preset.categories, ...categoriesOf(existing ?? [])])], [preset, existing]);
+  const categories = [...new Set([...preset.categories, ...categoriesOf(existing ?? [])])];
 
   const [tab, setTab] = useState<'type' | 'paste'>('type');
   const [rows, setRows] = useState<Row[]>(() => [emptyRow()]);
@@ -131,10 +131,34 @@ function BulkEntryPage() {
   };
 
   const ready = rows.filter((row) => row.name.trim());
+  // Typing a product twice would split its stock across two entries: flag it.
+  const duplicates = findDuplicates(rows, existing ?? [], asksVariant);
+  // Same product typed twice: add this row's count into the first and drop it.
+  const join = (row: Row, into: Row) =>
+    setRows((list) =>
+      list
+        .map((r) => {
+          if (r.key !== into.key) return r;
+          const sum = (a: string, b: string) => {
+            const x = Number(a.replace(',', '.')) || 0;
+            const y = Number(b.replace(',', '.')) || 0;
+            return a.trim() || b.trim() ? String(x + y) : '';
+          };
+          return {
+            ...r,
+            qty: sum(r.qty, row.qty),
+            expected: sum(r.expected, row.expected),
+            price: r.price || row.price,
+            cost: r.cost || row.cost,
+            category: r.category || row.category,
+          };
+        })
+        .filter((r) => r.key !== row.key)
+    );
   const missingPrice = ready.filter((row) => !(parseTZS(row.price) ?? 0)).length;
 
   const save = async () => {
-    if (!businessId || ready.length === 0) return;
+    if (!businessId || ready.length === 0 || duplicates.size > 0) return;
     setSaving(true);
     const parseQty = (value: string) => {
       const n = Number(value.replace(',', '.'));
@@ -268,6 +292,25 @@ function BulkEntryPage() {
                       </Field>
                     )}
                   </div>
+                  {(() => {
+                    const dup = duplicates.get(index);
+                    if (!dup) return null;
+                    const first = dup.kind === 'repeat' ? rows[dup.of] : null;
+                    return (
+                      <div role="alert" className="space-y-2 rounded-[10px] bg-debt-tint px-3 py-2 text-sm font-medium text-debt">
+                        <p>{dup.kind === 'repeat' ? tb('dupRepeat', { row: dup.of + 1 }) : tb('dupExists')}</p>
+                        {first && dup.kind === 'repeat' ? (
+                          <Button variant="secondary" size="sm" onClick={() => join(row, first)}>
+                            {tb('dupJoin', { row: dup.of + 1 })}
+                          </Button>
+                        ) : (
+                          <Button variant="secondary" size="sm" onClick={() => remove(row.key)}>
+                            {tb('dupRemove')}
+                          </Button>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {withExpected && tracksStock && (
                     <Field label={tb('expectedLabel')} hint={tb('expectedHint')}>
                       {(id) => <AmountInput id={id} value={row.expected} onChange={(e) => update(row.key, { expected: e.target.value })} />}
@@ -293,8 +336,11 @@ function BulkEntryPage() {
       {ready.length > 0 && (
         <div className="fixed inset-x-0 bottom-[calc(68px+env(safe-area-inset-bottom,0px))] z-30 border-t border-line bg-surface">
           <div className="mx-auto max-w-lg space-y-1 p-2.5">
+            {duplicates.size > 0 ? (
+              <p className="text-center text-xs font-semibold text-loss">{tb('dupBlock', { count: duplicates.size })}</p>
+            ) : null}
             {missingPrice > 0 ? <p className="text-center text-xs font-semibold text-debt">{tb('missingPrice', { count: missingPrice })}</p> : null}
-            <Button size="lg" block disabled={saving} onClick={() => void save()}>
+            <Button size="lg" block disabled={saving || duplicates.size > 0} onClick={() => void save()}>
               {saving ? tc('loading') : tb('saveAll', { count: ready.length, total: formatTZS(stockValue(ready)) })}
             </Button>
           </div>

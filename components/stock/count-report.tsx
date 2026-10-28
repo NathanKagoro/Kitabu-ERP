@@ -17,12 +17,23 @@ import { formatQty } from '@/lib/units';
  * would have sold for, then the worst items. One button sends the summary
  * on WhatsApp (to the owner, or from the operator after a visit).
  */
-export function CountReport({ count, shopName }: { count: StockCount; shopName: string }) {
+export function CountReport({
+  count,
+  shopName,
+  lines = count.lines,
+  corrected = 0,
+}: {
+  count: StockCount;
+  shopName: string;
+  /** The lines with "expected" re-read from the ledger now (late-synced sales included). */
+  lines?: StockCount['lines'];
+  corrected?: number;
+}) {
   const t = useTranslations('stockCheck');
   const locale = useLocale();
-  const s = summariseCount(count.lines);
-  const worst = shortLines(count.lines);
-  const over = count.lines.filter((line) => lineDifference(line) > 0);
+  const s = summariseCount(lines);
+  const worst = shortLines(lines);
+  const over = lines.filter((line) => lineDifference(line) > 0);
   const day = businessDay(count.clientCreatedAt);
   const recount = addDays(day, RECOUNT_AFTER_DAYS);
   const dateText = (d: string) =>
@@ -73,6 +84,12 @@ export function CountReport({ count, shopName }: { count: StockCount; shopName: 
           <p className="mt-1 text-2xl font-bold">{t('headlineNone')}</p>
         )}
       </section>
+
+      {corrected > 0 ? (
+        <p className="rounded-[10px] bg-info-tint px-3 py-2.5 text-sm font-medium text-info">
+          {t('correctedNote', { count: corrected })}
+        </p>
+      ) : null}
 
       <dl className="card grid grid-cols-3 divide-x divide-line text-center">
         <div className="px-2 py-3">

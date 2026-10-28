@@ -6,9 +6,10 @@ import { useLocale, useTranslations } from 'next-intl';
 import { useApp } from '@/components/app-provider';
 import { ChevronRight, Package } from '@/components/icons';
 import { Badge, EmptyState, Money, PageHeader } from '@/components/ui/bits';
-import { RECOUNT_AFTER_DAYS } from '@/lib/calc/stock-count';
+import { RECOUNT_AFTER_DAYS, summariseCount } from '@/lib/calc/stock-count';
 import { businessDay, daysBetween } from '@/lib/date';
 import { useStockCounts } from '@/lib/local/queries';
+import { useRefreshedCounts } from '@/lib/local/report-queries';
 import { formatQty } from '@/lib/units';
 
 /**
@@ -22,6 +23,7 @@ export default function StockCheckPage() {
   const locale = useLocale();
   const { businessId, can, show } = useApp();
   const counts = useStockCounts(businessId);
+  const refreshed = useRefreshedCounts(businessId, counts);
 
   if (!show('stockTracking')) {
     return (
@@ -67,7 +69,11 @@ export default function StockCheckPage() {
         <section>
           <h2 className="px-4 pb-1 text-sm font-bold text-ink-soft">{t('history')}</h2>
           <ul className="divide-y divide-line border-y border-line bg-surface">
-            {counts.map((count) => {
+            {counts.map((stored) => {
+              // The totals as they stand now, with late-synced sales counted in.
+              const lines = refreshed?.get(stored.id)?.lines;
+              const now = lines ? summariseCount(lines) : null;
+              const count = now ? { ...stored, ...now } : stored;
               const lead = count.valueShortCost > 0 ? count.valueShortCost : count.valueShortPrice;
               return (
                 <li key={count.id}>

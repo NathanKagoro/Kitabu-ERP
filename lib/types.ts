@@ -175,6 +175,11 @@ export interface StockMovement {
   refId?: string | null;
   unitCost?: number | null;
   note?: string | null;
+  /**
+   * Set on a stock count: the shelf held exactly this many at createdAt.
+   * Movements before it no longer count towards on-hand (lib/calc/stock.ts).
+   */
+  setsQty?: number | null;
   createdAt: string;
   createdBy?: string | null;
 }
@@ -187,6 +192,8 @@ export interface Customer {
   note?: string | null;
   /** Asked not to get offers. Still a customer for credit and receipts. */
   noOffers?: boolean;
+  /** When they agreed to get offers on WhatsApp. No date, no offers (opt-in). */
+  offersConsentAt?: string | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -214,6 +221,8 @@ export interface Sale {
   receiptToken: string;
   note?: string | null;
   createdBy?: string | null;
+  /** The person at the till (members.id). On a shared phone, not the login. */
+  memberId?: string | null;
   clientCreatedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -246,6 +255,8 @@ export interface Payment {
   reference?: string | null;
   note?: string | null;
   createdBy?: string | null;
+  /** The person at the till (members.id) who took the money. */
+  memberId?: string | null;
   clientCreatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -329,6 +340,8 @@ export interface StockCountLine {
   counted: number;
   unitCost: number | null;
   unitPrice: number;
+  /** When this line was counted. Missing on counts saved before 0.5. */
+  countedAt?: string;
 }
 
 export interface StockCount {

@@ -6,13 +6,14 @@ import { Suspense, useEffect, useMemo, useState } from 'react';
 
 import { useApp } from '@/components/app-provider';
 import { Check, MessageCircle } from '@/components/icons';
-import { OptionGrid, PageHeader } from '@/components/ui/bits';
+import { EmptyState, OptionGrid, PageHeader } from '@/components/ui/bits';
 import { Field, TextArea } from '@/components/ui/field';
 import { formatPhone } from '@/lib/auth/phone';
 import { cn } from '@/lib/cn';
 import { firstName, inAudience, offerRecipients, type Audience } from '@/lib/customers';
 import { businessDay } from '@/lib/date';
-import { useCustomers, useCustomerStats } from '@/lib/local/queries';
+import { useCustomers } from '@/lib/local/queries';
+import { useCustomerStats } from '@/lib/local/report-queries';
 import { fillTemplate, whatsappLink } from '@/lib/receipt';
 
 /**
@@ -54,7 +55,7 @@ export default function OfferRoute() {
   );
 }
 
-function OfferPage() {
+function OfferPageInner() {
   const t = useTranslations('clients');
   const params = useSearchParams();
   const { businessId, business } = useApp();
@@ -150,4 +151,19 @@ function OfferPage() {
       )}
     </>
   );
+}
+
+/** Owners and managers only: the customer list is the shop's, not the till's. */
+function OfferPage() {
+  const { can } = useApp();
+  const tg = useTranslations('errors');
+  if (!can('customerList')) {
+    return (
+      <>
+        <PageHeader title="" />
+        <EmptyState title={tg('noAccess')} />
+      </>
+    );
+  }
+  return <OfferPageInner />;
 }

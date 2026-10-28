@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { lineDifference, shortLines, summariseCount, type CountLine } from '@/lib/calc/stock-count';
+import { lineDifference, refreshCountLines, shortLines, summariseCount, type CountLine } from '@/lib/calc/stock-count';
+import { stockAsOf } from '@/lib/calc/stock';
 
 const line = (over: Partial<CountLine>): CountLine => ({
   productId: crypto.randomUUID(),
@@ -69,5 +70,31 @@ describe('the stock check', () => {
       ['dear', 1, 50000],
       ['cheap', 5, 500],
     ]);
+  });
+});
+
+describe('a report corrects itself when late sales arrive', () => {
+  const count = 'count-1';
+  const mv = (id: string, qty: number, createdAt: string, over: Record<string, unknown> = {}) => ({ id, productId: 'lotion', qty, createdAt, ...over });
+
+  it('two lotions sold offline before the count are sold, not missing', () => {
+    const line = { productId: 'lotion', name: 'Nivea', expected: 12, counted: 10, unitCost: 9000, unitPrice: 12500, countedAt: '2026-10-01T14:05:00Z' };
+    expect(summariseCount([line]).unitsShort).toBe(2);
+
+    const ledger = [
+      mv('a', 12, '2026-10-01T08:00:00Z'),
+      mv('b', 0, '2026-10-01T14:05:00Z', { refId: count, setsQty: 10 }), // the count itself
+      mv('c', -2, '2026-10-01T13:50:00Z'), // the cashier's sale, synced tonight
+    ];
+    const { lines, corrected } = refreshCountLines([line], ledger, count, '2026-10-01T14:05:00Z', stockAsOf);
+    expect(corrected).toBe(1);
+    expect(lines[0]!.expected).toBe(10);
+    expect(summariseCount(lines).unitsShort).toBe(0);
+  });
+
+  it('a sale after the count does not change the report', () => {
+    const line = { productId: 'lotion', name: 'Nivea', expected: 12, counted: 10, unitCost: 9000, unitPrice: 12500, countedAt: '2026-10-01T14:05:00Z' };
+    const ledger = [mv('a', 12, '2026-10-01T08:00:00Z'), mv('d', -1, '2026-10-01T15:00:00Z')];
+    expect(refreshCountLines([line], ledger, count, line.countedAt, stockAsOf).corrected).toBe(0);
   });
 });

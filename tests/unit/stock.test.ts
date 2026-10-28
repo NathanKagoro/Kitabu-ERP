@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isLowStock, stockByProduct, stockOnHand, wasteCost, weightedAverageCost } from '@/lib/calc/stock';
+import { averageUnitCost, isLowStock, stockAsOf, stockByProduct, stockOnHand, wasteCost, weightedAverageCost } from '@/lib/calc/stock';
 import type { StockMovement } from '@/lib/types';
 
 const move = (productId: string, qty: number, type: StockMovement['type'] = 'adjust'): StockMovement => ({
@@ -72,5 +72,73 @@ describe('waste and low stock', () => {
     expect(isLowStock(3, 5)).toBe(true);
     expect(isLowStock(6, 5)).toBe(false);
     expect(isLowStock(0, null)).toBe(false);
+  });
+});
+
+describe('a count resets stock to what was on the shelf at that moment', () => {
+  let n = 0;
+  const m = (qty: number, createdAt: string, over: Record<string, unknown> = {}) => ({
+    id: `0000${String(++n).padStart(4, '0')}`,
+    productId: 'lotion',
+    qty,
+    type: 'sale' as const,
+    createdAt,
+    ...over,
+  });
+
+  it('later movements still count; earlier ones are already in the count', () => {
+    const ledger = [
+      m(12, '2026-10-01T08:00:00Z', { type: 'purchase' }),
+      m(-1, '2026-10-01T09:00:00Z'),
+      m(-2, '2026-10-01T09:30:00Z', { type: 'adjust', setsQty: 9 }), // counted 9 at 09:30
+      m(-1, '2026-10-01T10:00:00Z'),
+    ];
+    expect(stockOnHand(ledger)).toBe(8);
+  });
+
+  it('a sale from before the count that syncs late changes nothing', () => {
+    const counted = [m(12, '2026-10-01T08:00:00Z', { type: 'purchase' }), m(0, '2026-10-01T14:05:00Z', { type: 'adjust', setsQty: 10 })];
+    // The cashier's phone sold 2 at 13:50, offline; it arrives tonight.
+    const late = m(-2, '2026-10-01T13:50:00Z');
+    expect(stockOnHand([...counted, late])).toBe(10);
+    // Whereas a sale after the count does come off.
+    expect(stockOnHand([...counted, late, m(-1, '2026-10-01T14:10:00Z')])).toBe(9);
+  });
+
+  it('the newest count wins, wherever it sits in the list', () => {
+    const ledger = [m(0, '2026-10-02T10:00:00Z', { type: 'adjust', setsQty: 4 }), m(0, '2026-10-01T10:00:00Z', { type: 'adjust', setsQty: 20 }), m(-1, '2026-10-01T11:00:00Z')];
+    expect(stockOnHand(ledger)).toBe(4);
+  });
+
+  it('stock as of a moment reads the ledger up to then', () => {
+    const ledger = [m(12, '2026-10-01T08:00:00Z', { type: 'purchase' }), m(-2, '2026-10-01T13:50:00Z'), m(-1, '2026-10-01T15:00:00Z')];
+    expect(stockAsOf(ledger, '2026-10-01T14:05:00Z')).toBe(10);
+  });
+
+  it('per product, with counts', () => {
+    const totals = stockByProduct([
+      m(5, '2026-10-01T08:00:00Z', { type: 'purchase' }),
+      m(0, '2026-10-01T09:00:00Z', { type: 'adjust', setsQty: 3 }),
+      { ...m(7, '2026-10-01T08:00:00Z', { type: 'purchase' }), productId: 'lipstick' },
+    ]);
+    expect(totals.get('lotion')).toBe(3);
+    expect(totals.get('lipstick')).toBe(7);
+  });
+});
+
+describe('average cost', () => {
+  it('weights every unit received at a known cost, not the latest price', () => {
+    const cost = averageUnitCost([
+      { qty: 10, unitCost: 9000, type: 'purchase' },
+      { qty: 2, unitCost: 12000, type: 'purchase' }, // one dear delivery
+      { qty: -3, unitCost: null, type: 'sale' },
+      { qty: 5, unitCost: null, type: 'purchase' },
+    ]);
+    expect(cost).toBe(9500);
+  });
+
+  it('falls back to the product’s cost when nothing was ever received with one', () => {
+    expect(averageUnitCost([{ qty: -1, unitCost: null, type: 'sale' }], 4000)).toBe(4000);
+    expect(averageUnitCost([], null)).toBeNull();
   });
 });

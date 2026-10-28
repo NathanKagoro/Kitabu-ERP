@@ -139,3 +139,50 @@ function quantity(cell: string): number | null {
   const value = Number(cleaned);
   return Number.isFinite(value) && value >= 0 ? Math.round(value * 1000) / 1000 : null;
 }
+
+/**
+ * One key per product: case, extra spaces and accents don't make a new one.
+ * "Lotion  Nivea" and "lotion nivea" are the same thing on the shelf.
+ */
+export function productKey(name: string, variant?: string | null): string {
+  const clean = (s: string) =>
+    s
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .trim();
+  return `${clean(name)}|${clean(variant ?? '')}`;
+}
+
+export type Duplicate = { kind: 'repeat'; of: number } | { kind: 'exists'; productId: string };
+
+/**
+ * Rows in a bulk entry that would make a second copy of a product, which
+ * splits its stock across two entries. A repeat points at the first row with
+ * the same name (and shade/size, when asked); an existing match points at the
+ * product already in the shop. Blank rows are ignored. Keyed by row index.
+ */
+export function findDuplicates(
+  rows: readonly { name: string; variant?: string | null }[],
+  existing: readonly Pick<Product, 'id' | 'name' | 'variant' | 'active' | 'deletedAt'>[],
+  withVariant: boolean
+): Map<number, Duplicate> {
+  const key = (name: string, variant?: string | null) => productKey(name, withVariant ? variant : null);
+  const inShop = new Map<string, string>();
+  for (const p of existing) {
+    if (p.active && !p.deletedAt) inShop.set(key(p.name, withVariant ? p.variant : null), p.id);
+  }
+  const seen = new Map<string, number>();
+  const found = new Map<number, Duplicate>();
+  rows.forEach((row, index) => {
+    if (!row.name.trim()) return;
+    const k = key(row.name, row.variant);
+    const productId = inShop.get(k);
+    if (productId) return void found.set(index, { kind: 'exists', productId });
+    const first = seen.get(k);
+    if (first !== undefined) found.set(index, { kind: 'repeat', of: first });
+    else seen.set(k, index);
+  });
+  return found;
+}

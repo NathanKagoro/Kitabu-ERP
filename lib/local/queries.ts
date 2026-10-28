@@ -3,7 +3,6 @@
 import { useLiveQuery } from 'dexie-react-hooks';
 
 import { balancesByCustomer, lastPaymentByCustomer } from '../calc/credit';
-import { statsByCustomer } from '../customers';
 import { stockByProduct } from '../calc/stock';
 import { dayBounds } from '../date';
 import type { EntityTable } from 'dexie';
@@ -55,15 +54,6 @@ export function useStock(businessId: string | null) {
     if (!businessId) return new Map<string, number>();
     const rows = await db().stockMovements.where('businessId').equals(businessId).toArray();
     return stockByProduct(rows);
-  }, [businessId]);
-}
-
-/** Purchases per customer (count, total, last date), for the customer list. */
-export function useCustomerStats(businessId: string | null) {
-  return useLiveQuery(async () => {
-    if (!businessId) return statsByCustomer([]);
-    const sales = await db().sales.where('businessId').equals(businessId).toArray();
-    return statsByCustomer(sales);
   }, [businessId]);
 }
 
