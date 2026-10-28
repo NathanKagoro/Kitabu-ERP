@@ -617,7 +617,13 @@
     "hint": "Two weeks of sales, purchases and stock checks for this type of shop, for showing the app.",
     "creating": "Creating...",
     "created": "Demo business ready",
-    "businessName": "{type} – demo"
+    "businessName": "{type} – demo",
+    "opening": "Opening the sample shop…",
+    "openingHint": "A hardware shop with two weeks of trading. The first time takes a few seconds.",
+    "failed": "Could not open the sample shop.",
+    "retry": "Try again",
+    "banner": "Sample shop: this data is for showing only",
+    "leave": "Leave"
   },
   "errors": {
     "generic": "Something went wrong. Try again.",

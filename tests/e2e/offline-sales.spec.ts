@@ -321,3 +321,38 @@ test('a shared phone: duplicates are caught, a cashier takes the till with a PIN
   const jumaId = rows('members').find((m) => m.name === 'Juma')!.id;
   await expect.poll(() => rows('sales').map((sale) => sale.member_id), { timeout: 20_000 }).toContain(jumaId);
 });
+
+test('the demo link opens a stocked hardware shop with no sign-in, and sends nothing to the server', async ({ page }) => {
+  const server = await fakeSupabase(page);
+  let requests = 0;
+  page.on('request', (request) => {
+    if (request.url().startsWith(FAKE_SUPABASE)) requests++;
+  });
+
+  await page.goto('/demo');
+  await page.waitForURL(/\/mauzo\/?$/, { timeout: 60_000 });
+  await expect(page.getByText('Duka la mfano', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Saruji 50kg/ }).first()).toBeVisible();
+
+  // Two weeks of trading, today included, split across the staff.
+  await page.goto('/wafanyakazi/mauzo/');
+  await expect(page.getByText('Juma')).toBeVisible();
+  await expect(page.getByText('Neema')).toBeVisible();
+  await page.goto('/stoo/');
+  await expect(page.getByText(/Zimepungua 8/).first()).toBeVisible();
+
+  // Opening the link again the same day keeps the shop (and a sale made in it).
+  await page.goto('/mauzo/');
+  await page.getByRole('button', { name: /Saruji 50kg/ }).first().click();
+  await page.getByRole('button', { name: 'Lipa taslimu' }).click();
+  await expect(page.getByText('Imehifadhiwa!')).toBeVisible();
+  await page.goto('/demo');
+  await page.waitForURL(/\/mauzo\/?$/, { timeout: 60_000 });
+
+  expect(requests).toBe(0);
+  expect(server.posts).toEqual([]);
+
+  // Leaving goes back to the real sign-in.
+  await page.getByRole('button', { name: 'Toka' }).click();
+  await page.waitForURL(/\/ingia\/?$/);
+});

@@ -1,4 +1,5 @@
-import { db, getMeta, META_KEYS, setMeta } from '../local/db';
+import { db, getMeta, META_KEYS, setDb, setMeta } from '../local/db';
+import { isShowcase, setShowcase } from '../showcase';
 import { uuidv7 } from '../uuid';
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 import type { Business, Member } from '../types';
@@ -155,6 +156,11 @@ export async function signOut(): Promise<void> {
   await setMeta(META_KEYS.unlockedAt, null);
   await setMeta(META_KEYS.mustSetPassword, false);
   await setMeta(META_KEYS.operator, false);
+  // Leaving the demo: back to this phone's own database and server.
+  if (isShowcase()) {
+    setShowcase(false);
+    setDb(null);
+  }
 }
 
 export async function memberFor(businessId: string, userId: string) {

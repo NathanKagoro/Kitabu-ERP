@@ -617,7 +617,13 @@
     "hint": "Wiki mbili za mauzo, manunuzi na hesabu ya stoo za duka la aina hii, kwa ajili ya kuonyesha app.",
     "creating": "Inatengeneza...",
     "created": "Biashara ya mfano iko tayari",
-    "businessName": "{type} – mfano"
+    "businessName": "{type} – mfano",
+    "opening": "Inafungua duka la mfano…",
+    "openingHint": "Duka la vifaa vya ujenzi lenye wiki mbili za mauzo. Mara ya kwanza huchukua sekunde chache.",
+    "failed": "Imeshindikana kufungua duka la mfano.",
+    "retry": "Jaribu tena",
+    "banner": "Duka la mfano: data hii ni ya kuonyesha tu",
+    "leave": "Toka"
   },
   "errors": {
     "generic": "Kuna tatizo. Jaribu tena.",

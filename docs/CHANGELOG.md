@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.1 — a demo link with no sign-in (2026-10-28)
+
+- **`/demo`** opens Baraka Hardware, a sample hardware shop: two weeks of sales, purchases, credit customers, day closings and two stock checks, with an owner (Baraka) and two staff (Neema, Juma) so "sales by staff" has people in it. There is no sign-in. `/demo?lang=en` opens it in English.
+- It runs in its own database in the browser ("hesabu-demo") with the server switched off, even on the connected site. A real shop's data on the same phone is untouched, and nothing is sent anywhere.
+- The shop is rebuilt when the link is opened on a new day, so "today" always has sales. A thin strip on every screen says it is a sample, and "Toka" (leave) goes back to the real sign-in.
+- The demo seeder can name the owner and add staff (`createDemoBusiness(..., { owner, staff })`).
+- E2E: the demo link opens with no sign-in and makes no server requests.
+
 ## 0.5.0 — before real shops: honest stock checks, who's selling, offers by consent (2026-10-28)
 
 Fixes for gaps the 0.4 tests didn't catch.

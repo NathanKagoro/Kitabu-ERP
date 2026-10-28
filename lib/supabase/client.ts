@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { isShowcase } from '../showcase';
+
 /**
  * Supabase is optional. With no keys configured the app still runs end to end
  * on the local Dexie store -- which is both a real deployment mode (a trader
@@ -7,6 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * setup.
  */
 export function isSupabaseConfigured(): boolean {
+  // The demo link never talks to the server, even on a connected build.
+  if (isShowcase()) return false;
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   );

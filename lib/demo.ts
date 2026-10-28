@@ -19,7 +19,10 @@ import { loadRange } from './local/queries';
 import { createBusiness } from './onboarding/create-business';
 import { STARTER_PRODUCTS, type StarterProduct } from './onboarding/starter-products';
 import { productLabel } from './products';
-import type { BusinessType, ExpenseCategory, Product } from './types';
+import type { BusinessType, ExpenseCategory, Member, Product } from './types';
+import { nowIso } from './date';
+import { persist } from './local/write';
+import { uuidv7 } from './uuid';
 
 /**
  * Two weeks of a plausible shop of the same kind as the one being shown -- a
@@ -65,10 +68,24 @@ export async function createDemoBusiness(
   userId: string,
   name: string,
   locale: string,
-  type: BusinessType = 'genge'
+  type: BusinessType = 'genge',
+  /** The demo link names the owner and adds staff, so "sales by staff" has people in it. */
+  people: { owner?: string; staff?: readonly { name: string; role: 'manager' | 'cashier' }[] } = {}
 ): Promise<string> {
   const business = await createBusiness({ name, type, locale, userId });
   const businessId = business.id;
+  const owner = (await db().members.where('businessId').equals(businessId).first())!;
+  if (people.owner) await persist('members', { ...owner, name: people.owner, updatedAt: nowIso() });
+  const sellers: (string | null)[] = [owner.id];
+  for (const person of people.staff ?? []) {
+    const at = nowIso();
+    const id = uuidv7();
+    await persist('members', {
+      id, businessId, userId: null, name: person.name, phone: null, role: person.role,
+      pinHash: null, active: true, createdAt: at, updatedAt: at, deletedAt: null,
+    } satisfies Member);
+    sellers.push(id, id); // staff do most of the selling
+  }
   const random = prng(42);
   const pick = <T>(list: readonly T[]) => list[Math.floor(random() * list.length)]!;
   const between = ([lo, hi]: [number, number]) => lo + Math.floor(random() * (hi - lo + 1));
@@ -152,6 +169,7 @@ export async function createDemoBusiness(
         userId,
         at: at(day, hour),
         lines,
+        memberId: people.staff?.length ? pick(sellers) : null,
         customerId: named ? pick(customers).id : null,
         tenders: onCredit ? [] : roll < 0.4 ? [{ method: 'mpesa', amount: total }] : [{ method: 'cash', amount: total }],
       });

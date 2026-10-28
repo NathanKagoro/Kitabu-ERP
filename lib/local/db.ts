@@ -1,5 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
 
+import { isShowcase, SHOWCASE_DB } from '../showcase';
+
 import type {
   Business,
   BusinessDocument,
@@ -109,7 +111,7 @@ let instance: HesabuDB | null = null;
  * unit test) does not touch IndexedDB.
  */
 export function db(): HesabuDB {
-  if (!instance) instance = new HesabuDB();
+  if (!instance) instance = new HesabuDB(isShowcase() ? SHOWCASE_DB : undefined);
   return instance;
 }
 
